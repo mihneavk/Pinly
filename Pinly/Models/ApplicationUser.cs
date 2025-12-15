@@ -15,5 +15,7 @@ namespace Pinly.Models
         public string? ProfilePicturePath { get; set; } // calea catre imaginea din wwwroot
 
         public bool IsPublic { get; set; } = true;
+
+        public virtual ICollection<Pin>? Pins { get; set; }
     }
 }
