@@ -1,6 +1,5 @@
-﻿using System;
-using System.ComponentModel.DataAnnotations; 
-using System.ComponentModel.DataAnnotations.Schema; 
+﻿using System.ComponentModel.DataAnnotations;
+using Pinly.Models;
 
 namespace Pinly.Models
 {
@@ -9,18 +8,13 @@ namespace Pinly.Models
         [Key]
         public int Id { get; set; }
 
-        [Required(ErrorMessage = "Titlul este obligatoriu")]
-        public string Title { get; set; }
-
-        public string? Description { get; set; }
-
         [Required]
+        public string Title { get; set; }
+        public string? Description { get; set; }
         public string ImagePath { get; set; }
-
         public DateTime CreatedDate { get; set; }
 
-        public int? UserId { get; set; }
-
-        public virtual User? User { get; set; }
+        public string? UserId { get; set; }
+        public virtual ApplicationUser? User { get; set; }
     }
 }
