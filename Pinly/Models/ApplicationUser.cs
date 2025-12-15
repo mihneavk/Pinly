@@ -17,5 +17,8 @@ namespace Pinly.Models
         public bool IsPublic { get; set; } = true;
 
         public virtual ICollection<Pin>? Pins { get; set; }
+
+        public virtual ICollection<Follow>? Followers { get; set; }
+        public virtual ICollection<Follow>? Following { get; set; }
     }
 }

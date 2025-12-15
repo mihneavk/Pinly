@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization; // --- NOU: Necesar pentru atributul [Authorize]
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pinly.Data;
@@ -33,7 +34,7 @@ namespace Pinly.Controllers
         }
 
         // GET: User/Show/{id}
-        [HttpGet] 
+        [HttpGet]
         public async Task<IActionResult> Show(string id)
         {
             if (string.IsNullOrEmpty(id)) return NotFound();
@@ -47,28 +48,64 @@ namespace Pinly.Controllers
                 return NotFound();
             }
 
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            bool isFollowing = false;
 
-            // daca profilul este public - îl afișăm direct
+            if (User.Identity.IsAuthenticated)
+            {
+                isFollowing = await _db.Follows
+                    .AnyAsync(f => f.FollowerId == currentUserId && f.FolloweeId == id);
+            }
+
+            ViewBag.IsFollowing = isFollowing;
+            ViewBag.FollowersCount = await _db.Follows.CountAsync(f => f.FolloweeId == id);
+
+
             if (userProfile.IsPublic)
             {
                 return View(userProfile);
             }
-
-            // daca profilul este privat, verificăm dacă cel care se uita este proprietarul
-            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (User.Identity.IsAuthenticated && currentUserId == userProfile.Id)
             {
                 return View(userProfile);
             }
 
-            // daca profilul este privat și vizitatorul NU este proprietar
-            // ascundem pin-urile și marcăm pentru View că e privat
-            userProfile.Pins = new List<Pin>(); // golim lista de pin-uri pentru siguranta
+            userProfile.Pins = new List<Pin>();
             ViewBag.Message = "Acest cont este privat.";
 
-            // returnam view-ul, dar în HTML vei verifica daca Pins e gol sau ViewBag.Message
             return View(userProfile);
+        }
+
+        [HttpPost]
+        [Authorize] 
+        public async Task<IActionResult> ToggleFollow(string id)
+        {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (currentUserId == id) return BadRequest("Nu te poți urmări singur.");
+
+            var existingFollow = await _db.Follows
+                .FirstOrDefaultAsync(f => f.FollowerId == currentUserId && f.FolloweeId == id);
+
+            if (existingFollow != null)
+            {
+                // Unfollow
+                _db.Follows.Remove(existingFollow);
+            }
+            else
+            {
+                // Follow
+                var newFollow = new Follow
+                {
+                    FollowerId = currentUserId,
+                    FolloweeId = id
+                };
+                _db.Follows.Add(newFollow);
+            }
+
+            await _db.SaveChangesAsync();
+            return RedirectToAction("Show", new { id = id });
         }
     }
 }

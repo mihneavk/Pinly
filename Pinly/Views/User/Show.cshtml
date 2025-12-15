@@ -1,0 +1,99 @@
+﻿@model Pinly.Models.ApplicationUser
+@using System.Security.Claims
+
+@{
+    ViewData["Title"] = "Profilul lui " + Model.FullName;
+    var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+
+            @* --- 1. INFO UTILIZATOR --- *@
+
+            @* Afișăm poza de profil sau o imagine default *@
+            @if (!string.IsNullOrEmpty(Model.ProfilePicturePath))
+            {
+                <img src="@Model.ProfilePicturePath" alt="Avatar" class="rounded-circle mb-3" style="width: 150px; height: 150px; object-fit: cover; border: 3px solid #eee;" />
+            }
+            else
+            {
+                <div class="rounded-circle bg-secondary d-inline-flex justify-content-center align-items-center mb-3" style="width: 150px; height: 150px; color: white; font-size: 3rem;">
+                    @Model.FullName[0]
+                </div>
+            }
+
+            <h2>@Model.FullName</h2>
+            <p class="text-muted">@Model.UserName</p>
+
+            @if (!string.IsNullOrEmpty(Model.Description))
+            {
+                <p class="lead">@Model.Description</p>
+            }
+
+            @* --- 2. STATISTICI FOLLOWERS --- *@
+            <div class="mb-4">
+                <a asp-controller="User" asp-action="Followers" asp-route-id="@Model.Id" class="text-decoration-none text-dark">
+                    <strong>@ViewBag.FollowersCount</strong> Urmăritori
+                </a>
+                <span class="mx-2">|</span>
+                <span><strong>@Model.Following?.Count</strong> Urmărește</span>
+            </div>
+
+            @* --- 3. BUTONUL DE FOLLOW / UNFOLLOW --- *@
+            @if (User.Identity.IsAuthenticated && Model.Id != currentUserId)
+            {
+                <form asp-controller="User" asp-action="ToggleFollow" asp-route-id="@Model.Id" method="post" class="d-inline">
+                    @if (ViewBag.IsFollowing == true)
+                    {
+                        // Dacă deja îl urmărim -> Buton de Unfollow (Gri)
+                        <button type="submit" class="btn btn-secondary btn-lg rounded-pill px-4">
+                            Urmărești
+                        </button>
+                    }
+                    else
+                    {
+                        // Dacă nu îl urmărim -> Buton de Follow (Roșu/Albastru)
+                        <button type="submit" class="btn btn-danger btn-lg rounded-pill px-4">
+                            Urmărește
+                        </button>
+                    }
+                </form>
+            }
+        </div>
+    </div>
+
+    <hr class="my-5" />
+
+    @* --- 4. LISTA DE PIN-URI SAU MESAJ PRIVAT --- *@
+    <div class="row">
+        <h3 class="mb-4">Pin-urile lui @Model.FullName</h3>
+
+        @if (ViewBag.Message != null)
+        {
+            <div class="alert alert-warning text-center">
+                <i class="bi bi-lock-fill"></i> @ViewBag.Message
+            </div>
+        }
+        else if (Model.Pins != null && Model.Pins.Any())
+        {
+            @foreach (var pin in Model.Pins)
+            {
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100 shadow-sm">
+                        <img src="@pin.ImagePath" class="card-img-top" alt="@pin.Title" style="height: 250px; object-fit: cover;">
+                        <div class="card-body">
+                            <h5 class="card-title">@pin.Title</h5>
+                            <a asp-controller="Pin" asp-action="Details" asp-route-id="@pin.Id" class="btn btn-sm btn-outline-primary">Vezi detalii</a>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <p class="text-center text-muted">Acest utilizator nu are încă niciun Pin postat.</p>
+        }
+    </div>
+</div>
