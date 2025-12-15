@@ -7,14 +7,24 @@ namespace Pinly.Models
     {
         [Key]
         public int Id { get; set; }
-
-        [Required]
+        
+        
+        [Required(ErrorMessage = "Titlul este obligatoriu")]
         public string Title { get; set; }
+        
         public string? Description { get; set; }
-        public string ImagePath { get; set; }
+        
+        [Required(ErrorMessage = "Conținutul media este obligatoriu")]
+        public string MediaPath { get; set; }
+        
         public DateTime CreatedDate { get; set; }
 
-        public string? UserId { get; set; }
+        public string? ApplicationUserId { get; set; }
         public virtual ApplicationUser? User { get; set; }
+        
+        //Relatii 1:N cu entitati dependente (comentarii si reactii)
+        
+        public virtual ICollection<Comment>? Comments { get; set; }
+        public virtual ICollection<Reaction>? Reactions { get; set; }
     }
 }
