@@ -17,10 +17,6 @@ html {
   min-height: 100%;
 }
 
-body {
-  margin-bottom: 60px;
-}
-
 .form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
   color: var(--bs-secondary-color);
   text-align: end;
@@ -28,4 +24,26 @@ body {
 
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
   text-align: start;
+}
+
+
+body {
+    background-color: #f8f9fa; 
+    color: #333;
+    margin-bottom: 60px;
+}
+
+jumbotron h1.display-4 {
+    color: #e31837;
+}
+
+.btn-pinly-red {
+    background-color: #e31837;
+    border-color: #e31837;
+    color: white;
+}
+
+.btn-pinly-red:hover {
+    background-color: #c71530;
+    border-color: #c71530;
 }
