@@ -6,3 +6,32 @@
     <h1 class="display-4">Welcome</h1>
     <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
 </div>
+
+
+@{
+    ViewData["Title"] = "Pagina Principală";
+}
+
+<div class="jumbotron text-center bg-light p-5 my-4 rounded-3">
+    @if (User.Identity.IsAuthenticated)
+    {
+        <h1 class="display-4">Bine ai revenit, @User.Identity.Name!</h1>
+        <p class="lead">Începe să explorezi Pin-urile sau creează-ți propria inspirație.</p>
+        <hr class="my-4">
+        <a class="btn btn-primary btn-lg" asp-area="" asp-controller="Pin" asp-action="Create" role="button">
+            Creează un Pin Nou
+        </a>
+    }
+    else
+    {
+        <h1 class="display-4">Găsește-ți următoarea inspirație pe Pinly!</h1>
+        <p class="lead">O platformă socială pentru a descoperi, salva și distribui idei vizuale.</p>
+        <hr class="my-4">
+        <a class="btn btn-success btn-lg mx-2" asp-area="Identity" asp-page="/Account/Register" role="button">
+            Înregistrează-te
+        </a>
+        <a class="btn btn-outline-secondary btn-lg mx-2" asp-area="Identity" asp-page="/Account/Login" role="button">
+            Autentifică-te
+        </a>
+    }
+</div>
