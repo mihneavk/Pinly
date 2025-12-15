@@ -30,7 +30,9 @@ namespace Pinly.Data
                         Email = "admin@test.com",
                         NormalizedEmail = "ADMIN@TEST.COM",
                         EmailConfirmed = true,
-                        PasswordHash = hasher.HashPassword(null, "Admin1!")
+                        PasswordHash = hasher.HashPassword(null, "Admin1!"),
+                        FullName = "Administrator Principal",
+                        IsPublic = false
                     }
                 );
 
