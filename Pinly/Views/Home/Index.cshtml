@@ -1,37 +1,43 @@
 ﻿@{
-    ViewData["Title"] = "Home Page";
-}
-
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
-
-
-@{
-    ViewData["Title"] = "Pagina Principală";
+    // Asigurați-vă că nu mai există niciun alt text, View-ul este curat.
+    ViewData["Title"] = "Pagina Principală Pinly";
 }
 
 <div class="jumbotron text-center bg-light p-5 my-4 rounded-3">
+    
     @if (User.Identity.IsAuthenticated)
     {
-        <h1 class="display-4">Bine ai revenit, @User.Identity.Name!</h1>
-        <p class="lead">Începe să explorezi Pin-urile sau creează-ți propria inspirație.</p>
+        // ----------------------------------------------------
+        // Utilizator Logat
+        // ----------------------------------------------------
+        <h1 class="display-4">Bine ai revenit pe Pinly!</h1>
+        <p class="lead">Începe să explorezi Pin-uri sau creează-ți propria inspirație.</p>
         <hr class="my-4">
-        <a class="btn btn-primary btn-lg" asp-area="" asp-controller="Pin" asp-action="Create" role="button">
-            Creează un Pin Nou
-        </a>
+        
+        <div class="d-flex justify-content-center">
+            <a class="btn btn-danger btn-lg" asp-area="" asp-controller="Pin" asp-action="Create" role="button">
+                Creează un Pin Nou
+            </a>
+        </div>
     }
     else
     {
+        // ----------------------------------------------------
+        // Vizitator Neînregistrat
+        // ----------------------------------------------------
         <h1 class="display-4">Găsește-ți următoarea inspirație pe Pinly!</h1>
         <p class="lead">O platformă socială pentru a descoperi, salva și distribui idei vizuale.</p>
         <hr class="my-4">
-        <a class="btn btn-success btn-lg mx-2" asp-area="Identity" asp-page="/Account/Register" role="button">
-            Înregistrează-te
-        </a>
-        <a class="btn btn-outline-secondary btn-lg mx-2" asp-area="Identity" asp-page="/Account/Login" role="button">
-            Autentifică-te
-        </a>
+
+        <div class="d-flex justify-content-center">
+            
+            <a class="btn btn-danger btn-lg mx-2" asp-area="Identity" asp-page="/Account/Register" role="button">
+                Înregistrează-te Acum
+            </a>
+            
+            <a class="btn btn-outline-danger btn-lg mx-2" asp-area="Identity" asp-page="/Account/Login" role="button">
+                Autentifică-te
+            </a>
+        </div>
     }
 </div>
