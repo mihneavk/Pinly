@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Pinly.Models;
 using Pinly.ViewModels;
 
@@ -87,6 +88,54 @@ namespace Pinly.Controllers
 
             // Dacă validarea eșuează, reafisăm formularul cu erori
             return View(model);
+        }
+
+        // GET: Afișează pagina unui Pin specific
+        [HttpGet]
+        [AllowAnonymous] // Lăsăm și oaspeții să vadă pinul, dar nu să comenteze
+        public async Task<IActionResult> Show(int id)
+        {
+            var pin = await _context.Pins
+                .Include(p => p.ApplicationUser) // Încărcăm autorul pinului
+                .Include(p => p.Comments) // Încărcăm comentariile
+                    .ThenInclude(c => c.ApplicationUser) // Încărcăm autorii comentariilor
+                .FirstOrDefaultAsync(m => m.Id == id);
+
+            if (pin == null)
+            {
+                return NotFound();
+            }
+
+            return View(pin);
+        }
+
+        // POST: Adaugă un comentariu
+        [HttpPost]
+        [Authorize] // Trebuie să fii logat ca să comentezi
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AddComment(int pinId, string content)
+        {
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                // Dacă comentariul e gol, reîncărcăm pagina
+                return RedirectToAction("Show", new { id = pinId });
+            }
+
+            var user = await _userManager.GetUserAsync(User);
+
+            var comment = new Comment
+            {
+                PinId = pinId,
+                Content = content,
+                CreatedDate = DateTime.Now,
+                ApplicationUserId = user.Id
+            };
+
+            _context.Comments.Add(comment);
+            await _context.SaveChangesAsync();
+
+            // Ne întoarcem la aceeași pagină pentru a vedea comentariul
+            return RedirectToAction("Show", new { id = pinId });
         }
     }
 }

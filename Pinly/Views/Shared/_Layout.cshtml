@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/Pinly.styles.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 </head>
 <body>
     <header>
@@ -33,13 +34,15 @@
                             <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
                         </li>
                     </ul>
+
                     <ul class="navbar-nav">
                         @if (SignInManager.IsSignedIn(User))
                         {
                             @* --- UTILIZATOR LOGAT --- *@
                             <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Manage/Index" title="Manage">
-                                    Salut, @UserManager.GetUserName(User)!
+                                @* Link către Profilul Personalizat *@
+                                <a class="nav-link text-dark fw-bold" asp-area="" asp-controller="Profiles" asp-action="Show" asp-route-id="@UserManager.GetUserId(User)" title="Vezi Profil">
+                                    <i class="bi bi-person-circle"></i> Salut, @UserManager.GetUserName(User)!
                                 </a>
                             </li>
                             <li class="nav-item">
@@ -61,6 +64,7 @@
                             </li>
                         }
                     </ul>
+
                 </div>
             </div>
         </nav>
@@ -80,8 +84,5 @@
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
-    
-    
-    
-    </body>
+</body>
 </html>

@@ -1,0 +1,131 @@
+﻿@model Pinly.Models.Pin
+
+@{
+    ViewData["Title"] = Model.Title;
+}
+
+<div class="container mt-4 mb-5">
+    <a href="javascript:history.back()" class="btn btn-light rounded-circle shadow-sm position-fixed" style="top: 80px; left: 20px; z-index: 1000; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
+        <i class="bi bi-arrow-left" style="font-size: 1.5rem;"></i>
+    </a>
+
+    <div class="card shadow-lg border-0 rounded-4 overflow-hidden" style="max-width: 1000px; margin: 0 auto;">
+        <div class="row g-0">
+
+            <div class="col-md-6 bg-light d-flex align-items-center justify-content-center" style="background-color: #f9f9f9;">
+                <img src="@Model.MediaPath" class="img-fluid" alt="@Model.Title" style="max-height: 85vh; object-fit: contain; width: 100%;">
+            </div>
+
+            <div class="col-md-6 d-flex flex-column" style="max-height: 85vh;">
+
+                <div class="p-4 flex-shrink-0">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="d-flex align-items-center gap-2">
+                        </div>
+                    </div>
+
+                    <h1 class="fw-bold mb-3" style="font-size: 2rem;">@Model.Title</h1>
+                    <p class="text-muted">@Model.Description</p>
+
+                    <div class="d-flex align-items-center mt-4 mb-3">
+                        @{
+                            // Verificăm sigur numele
+                            var authorName = Model.ApplicationUser?.FullName;
+                            if (string.IsNullOrWhiteSpace(authorName))
+                            {
+                                authorName = Model.ApplicationUser?.UserName ?? "Anonim";
+                            }
+
+                            // Extragem inițiala doar dacă avem un nume valid
+                            var authorInitial = "A";
+                            if (!string.IsNullOrEmpty(authorName) && authorName.Length > 0)
+                            {
+                                authorInitial = authorName.Substring(0, 1).ToUpper();
+                            }
+                        }
+                        <div class="rounded-circle d-flex justify-content-center align-items-center bg-secondary text-white fw-bold me-3"
+                             style="width: 48px; height: 48px; font-size: 1.2rem;">
+                            @authorInitial
+                        </div>
+                        <div>
+                            <span class="fw-bold d-block">@authorName</span>
+                            <small class="text-muted">Autor</small>
+                        </div>
+                    </div>
+                    <hr />
+                    <h5 class="fw-bold mt-4">Comentarii</h5>
+                </div>
+
+                <div class="flex-grow-1 overflow-auto p-4 pt-0" style="min-height: 200px;">
+                    @if (Model.Comments != null && Model.Comments.Any())
+                    {
+                        foreach (var comment in Model.Comments.OrderBy(c => c.CreatedDate))
+                        {
+                            // LOGICĂ CORECTATĂ PENTRU COMENTARII
+                            var comUser = comment.ApplicationUser?.FullName;
+                            if (string.IsNullOrWhiteSpace(comUser))
+                            {
+                                comUser = comment.ApplicationUser?.UserName ?? "Anonim";
+                            }
+
+                            var comInitial = "U";
+                            if (!string.IsNullOrEmpty(comUser) && comUser.Length > 0)
+                            {
+                                comInitial = comUser.Substring(0, 1).ToUpper();
+                            }
+
+                            <div class="d-flex mb-3">
+                                <div class="rounded-circle d-flex justify-content-center align-items-center bg-light text-dark fw-bold me-2 flex-shrink-0"
+                                     style="width: 32px; height: 32px; font-size: 0.9rem;">
+                                    @comInitial
+                                </div>
+                                <div>
+                                    <span class="fw-bold me-2" style="font-size: 0.9rem;">@comUser</span>
+                                    <span style="font-size: 0.95rem;">@comment.Content</span>
+                                    <div class="text-muted mt-1" style="font-size: 0.75rem;">
+                                        @comment.CreatedDate.ToString("dd MMM HH:mm")
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="text-center text-muted mt-4">
+                            <p>Nu există comentarii încă.<br>Fii primul care spune ceva! <i class="bi bi-chat-heart"></i></p>
+                        </div>
+                    }
+                </div>
+
+                <div class="p-3 border-top bg-white flex-shrink-0">
+                    @if (User.Identity.IsAuthenticated)
+                    {
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="rounded-circle d-flex justify-content-center align-items-center bg-danger text-white fw-bold me-2"
+                                 style="width: 40px; height: 40px;">
+                                @(User.Identity.Name?.Substring(0, 1).ToUpper() ?? "U")
+                            </div>
+                            <span class="fw-bold">Tu</span>
+                        </div>
+
+                        <form asp-action="AddComment" asp-controller="Pins" method="post">
+                            <input type="hidden" name="pinId" value="@Model.Id" />
+                            <div class="input-group">
+                                <input type="text" name="content" class="form-control rounded-pill bg-light border-0 py-3 px-4"
+                                       placeholder="Adaugă un comentariu..." required autocomplete="off">
+                                <button class="btn btn-link text-danger fw-bold" type="submit" style="text-decoration: none;">Publică</button>
+                            </div>
+                        </form>
+                    }
+                    else
+                    {
+                        <div class="text-center">
+                            <a asp-area="Identity" asp-page="/Account/Login" class="btn btn-outline-danger rounded-pill w-100">Loghează-te pentru a comenta</a>
+                        </div>
+                    }
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>

@@ -92,6 +92,8 @@ namespace Pinly.Models
                 .WithMany(u => u.ModeratedGroups) // Folosim colecția adăugată în ApplicationUser
                 .HasForeignKey(g => g.ModeratorId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Comment>().ToTable("Comment");
         }
     }
 }

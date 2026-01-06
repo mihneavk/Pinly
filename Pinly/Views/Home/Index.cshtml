@@ -17,23 +17,15 @@
         break-inside: avoid; /* Previne ruperea cardului intre coloane */
     }
 
-    /* FOLOSIM @@media pentru a evita erorile Razor */
+    /* Responsive */
     @@media (max-width: 992px) {
-        .masonry-grid {
-            column-count: 3;
-        }
+        .masonry-grid { column-count: 3; }
     }
-
     @@media (max-width: 768px) {
-        .masonry-grid {
-            column-count: 2;
-        }
+        .masonry-grid { column-count: 2; }
     }
-
     @@media (max-width: 576px) {
-        .masonry-grid {
-            column-count: 1;
-        }
+        .masonry-grid { column-count: 1; }
     }
 
     .pin-card:hover {
@@ -77,27 +69,35 @@ else
             @foreach (var pin in Model)
             {
                 <div class="card masonry-item border-0 shadow-sm pin-card">
+                    <a asp-controller="Pins" asp-action="Show" asp-route-id="@pin.Id" class="text-decoration-none text-dark">
                     <img src="@pin.MediaPath" class="card-img-top rounded-3" alt="@pin.Title" style="width: 100%; display: block;">
+                    </a>
 
                     <div class="card-body p-3">
+
                         @if (!string.IsNullOrEmpty(pin.Title))
                         {
-                            <h6 class="card-title fw-bold mb-2 text-dark text-truncate">@pin.Title</h6>
+                            <h6 class="card-title fw-bold mb-1 text-dark text-truncate">@pin.Title</h6>
                         }
 
-                        <div class="d-flex align-items-center justify-content-between mt-3">
+                        @if (!string.IsNullOrEmpty(pin.Description))
+                        {
+                            <p class="card-text text-muted small mt-1 mb-3" style="font-size: 0.85rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                                @pin.Description
+                            </p>
+                        }
+
+                        <div class="d-flex align-items-center justify-content-between mt-2 pt-2 border-top">
                             <div class="d-flex align-items-center" style="min-width: 0;">
                                 @{
-                                    // 1. Determinam numele de afisat (Nume sau Email sau Anonim)
+                                    // Determinam numele de afisat
                                     var displayName = pin.ApplicationUser?.FullName;
-
-                                    // Dacă FullName e gol, încercăm să luăm din email (înainte de @)
                                     if (string.IsNullOrWhiteSpace(displayName))
                                     {
                                         displayName = pin.ApplicationUser?.UserName?.Split('@')[0] ?? "Anonim";
                                     }
 
-                                    // 2. Determinam initiala pentru cerc
+                                    // Determinam initiala
                                     var initial = "U";
                                     if (!string.IsNullOrEmpty(displayName))
                                     {
@@ -106,12 +106,12 @@ else
                                 }
 
                                 <div class="rounded-circle d-flex justify-content-center align-items-center flex-shrink-0"
-                                     style="width: 32px; height: 32px; background-color: #efefef; color: #333; font-weight: 600; margin-right: 10px;">
+                                     style="width: 32px; height: 32px; background-color: #f0f0f0; color: #333; font-weight: bold; margin-right: 10px;">
                                     @initial
                                 </div>
 
                                 <div class="d-flex flex-column text-truncate">
-                                    <span class="fw-bold text-dark text-truncate" style="font-size: 0.9rem; max-width: 140px;">
+                                    <span class="fw-bold text-dark text-truncate" style="font-size: 0.85rem; max-width: 120px;">
                                         @displayName
                                     </span>
                                 </div>

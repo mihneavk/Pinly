@@ -1,0 +1,116 @@
+﻿@model Pinly.ViewModels.ProfileViewModel
+
+@{
+    ViewData["Title"] = "Profil - " + (Model.User.FullName ?? Model.User.UserName);
+}
+
+<style>
+    /* Stiluri Masonry refolosite */
+    .masonry-grid {
+        column-count: 4;
+        column-gap: 1.5rem;
+    }
+
+    .masonry-item {
+        display: inline-block;
+        width: 100%;
+        margin-bottom: 1.5rem;
+        break-inside: avoid;
+    }
+
+    @@media (max-width: 992px) {
+        .masonry-grid {
+            column-count: 3;
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .masonry-grid {
+            column-count: 2;
+        }
+    }
+
+    @@media (max-width: 576px) {
+        .masonry-grid {
+            column-count: 1;
+        }
+    }
+
+    .pin-card:hover {
+        transform: scale(1.02);
+        transition: 0.3s;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.15) !important;
+        cursor: pointer;
+    }
+</style>
+
+<div class="container mt-5">
+
+    <div class="text-center mb-5">
+        @{
+            var initial = "U";
+            var displayName = Model.User.FullName;
+            if (string.IsNullOrWhiteSpace(displayName))
+            {
+                displayName = Model.User.UserName.Split('@')[0];
+            }
+            if (!string.IsNullOrEmpty(displayName))
+            {
+                initial = displayName.Substring(0, 1).ToUpper();
+            }
+        }
+
+        <div class="rounded-circle d-flex justify-content-center align-items-center bg-secondary text-white fw-bold mx-auto mb-3"
+             style="width: 120px; height: 120px; font-size: 3rem;">
+            @initial
+        </div>
+
+        <h2 class="fw-bold">@displayName</h2>
+        <p class="text-muted">@Model.User.UserName</p>
+
+        <div class="mt-3">
+            <button class="btn btn-light rounded-pill px-4 fw-bold mx-1">Share</button>
+
+            @if (Model.IsOwner)
+            {
+                <a asp-area="Identity" asp-page="/Account/Manage/Index" class="btn btn-light rounded-pill px-4 fw-bold mx-1">
+                    Editează cont
+                </a>
+            }
+            else
+            {
+                <button class="btn btn-danger rounded-pill px-4 fw-bold mx-1">Follow</button>
+            }
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <h4 class="fw-bold text-center mb-4">Pin-uri create</h4>
+
+        @if (!Model.Pins.Any())
+        {
+            <div class="text-center text-muted py-5">
+                <h5>Utilizatorul nu are încă pin-uri.</h5>
+            </div>
+        }
+        else
+        {
+            <div class="masonry-grid">
+                @foreach (var pin in Model.Pins)
+                {
+                    <div class="card masonry-item border-0 shadow-sm pin-card">
+                        <a asp-controller="Pins" asp-action="Show" asp-route-id="@pin.Id" class="text-decoration-none text-dark">
+                            <img src="@pin.MediaPath" class="card-img-top rounded-3" alt="@pin.Title" style="width: 100%; display: block;">
+                            <div class="card-body p-2">
+                                @if (!string.IsNullOrEmpty(pin.Title))
+                                {
+                                    <h6 class="card-title fw-bold mb-1 text-truncate">@pin.Title</h6>
+                                }
+                            </div>
+                        </a>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
