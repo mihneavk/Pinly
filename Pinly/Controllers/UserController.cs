@@ -107,5 +107,23 @@ namespace Pinly.Controllers
             await _db.SaveChangesAsync();
             return RedirectToAction("Show", new { id = id });
         }
+
+        // GET: User/Followers/{id}
+        [HttpGet]
+        public async Task<IActionResult> Followers(string id)
+        {
+            var user = await _db.Users
+                .Include(u => u.Followers)
+                .ThenInclude(f => f.Follower) 
+                .FirstOrDefaultAsync(u => u.Id == id);
+
+            if (user == null) return NotFound();
+
+            ViewBag.TargetUserName = user.FullName;
+
+            var followersList = user.Followers.Select(f => f.Follower).ToList();
+
+            return View(followersList);
+        }
     }
 }

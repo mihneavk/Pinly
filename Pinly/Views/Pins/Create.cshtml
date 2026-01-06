@@ -1,0 +1,55 @@
+﻿@model Pinly.ViewModels.PinCreateViewModel
+
+@{
+    ViewData["Title"] = "Creează un Pin";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white border-0 pt-4 pb-0">
+                    <h3 class="text-center fw-bold" style="color: #E60023;">Creează un Pin</h3>
+                </div>
+                <div class="card-body p-4">
+
+                    <form asp-action="Create" asp-controller="Pins" method="post" enctype="multipart/form-data">
+
+                        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                        <div class="mb-4 text-center p-4 border rounded bg-light">
+                            <label asp-for="Image" class="form-label fw-bold">Alege o imagine</label>
+                            <input asp-for="Image" class="form-control" type="file" accept="image/*" />
+                            <span asp-validation-for="Image" class="text-danger"></span>
+                            <small class="text-muted d-block mt-2">Recomandat: .jpg sau .png sub 5MB</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Title" class="form-label fw-bold">Titlu</label>
+                            <input asp-for="Title" class="form-control form-control-lg" placeholder="Adaugă un titlu..." />
+                            <span asp-validation-for="Title" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-4">
+                            <label asp-for="Description" class="form-label fw-bold">Descriere</label>
+                            <textarea asp-for="Description" class="form-control" rows="4" placeholder="Spune-ne mai multe despre acest pin..."></textarea>
+                            <span asp-validation-for="Description" class="text-danger"></span>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-danger btn-lg rounded-pill">Publică</button>
+                            <a asp-controller="Home" asp-action="Index" class="btn btn-light rounded-pill mt-2">Anulează</a>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}
