@@ -2,6 +2,12 @@
 
 @{
     ViewData["Title"] = "Profil - " + Model.User.UserName;
+
+    // Verificam rolurile
+    bool isAdmin = User.IsInRole("Admin");
+
+    // Verificam daca e blocat pentru vizitator (Privat + Nu urmareste + Nu e admin + Nu e owner)
+    bool isLocked = Model.User.IsPrivate && !Model.IsFollowing && !Model.IsOwner && !isAdmin;
 }
 
 <style>
@@ -68,12 +74,45 @@
     .profile-avatar-container:hover .avatar-overlay {
         opacity: 1;
     }
+
+    .nav-pills .nav-link {
+        color: #333;
+        font-weight: bold;
+        border-radius: 50px;
+        padding: 10px 20px;
+        margin: 0 5px;
+    }
+
+        .nav-pills .nav-link.active {
+            background-color: #333;
+            color: white;
+        }
+
+    /* Stil Buton Stergere Admin */
+    .admin-delete-btn {
+        position: absolute;
+        top: 0;
+        right: 0;
+        margin: 10px;
+    }
 </style>
 
-<div class="container mt-5">
-    <div class="text-center mb-5">
+<div class="container mt-5 position-relative">
+
+    @if (isAdmin && !Model.IsOwner)
+    {
+        <div class="admin-delete-btn">
+            <form asp-action="DeleteUser" asp-controller="Profiles" method="post" onsubmit="return confirm('ATENȚIE! Ești sigur că vrei să ștergi DEFINITIV acest utilizator? Această acțiune nu poate fi anulată.');">
+                <input type="hidden" name="userId" value="@Model.User.Id" />
+                <button type="submit" class="btn btn-danger fw-bold shadow">
+                    <i class="bi bi-trash-fill"></i> Șterge Cont
+                </button>
+            </form>
+        </div>
+    }
+
+    <div class="text-center mb-4">
         @{
-            // AICI FOLOSIM DOAR USERNAME
             var displayName = Model.User.UserName ?? "Anonim";
             var initial = (!string.IsNullOrEmpty(displayName)) ? displayName.Substring(0, 1).ToUpper() : "U";
         }
@@ -87,56 +126,198 @@
 
         <div class="profile-avatar-container bg-secondary text-white d-flex align-items-center justify-content-center shadow"
              onclick="@(Model.IsOwner ? "document.getElementById('fileInput').click()" : "")">
-
             @if (!string.IsNullOrEmpty(Model.User.ProfilePicturePath))
             {
                 <img src="@Model.User.ProfilePicturePath" style="width:100%; height:100%; object-fit:cover;" />
             }
             else
             {
+
                 <span style="font-size: 3rem; font-weight: bold;">@initial</span>
             }
 
             @if (Model.IsOwner)
             {
-                <div class="avatar-overlay">
-                    <i class="bi bi-camera-fill text-white fs-3"></i>
-                </div>
+                <div class="avatar-overlay"><i class="bi bi-camera-fill text-white fs-3"></i></div>
             }
         </div>
 
-        <h2 class="fw-bold mt-3">@displayName</h2>
+        <h2 class="fw-bold mt-3">
+            @displayName
+            @if (Model.User.IsPrivate)
+            {
+                <i class="bi bi-lock-fill fs-5 text-muted" title="Cont Privat"></i>
+            }
+        </h2>
+
+        @if (!Model.IsProfileAdmin && !isLocked)
+        {
+            <p class="text-muted small">
+                @Model.Followers.Count urmăritori &bull; @Model.Following.Count urmărește
+            </p>
+        }
 
         <div class="mt-3">
             @if (Model.IsOwner)
             {
-                <a asp-area="Identity" asp-page="/Account/Manage/Index" class="btn btn-light rounded-pill px-4 fw-bold">Editeaza cont</a>
+                <div class="d-flex justify-content-center gap-2">
+                    <a asp-area="Identity" asp-page="/Account/Manage/Index" class="btn btn-light rounded-pill px-4 fw-bold">Editează cont</a>
+
+                    @if (!isAdmin)
+                    {
+                        <form asp-action="TogglePrivacy" method="post">
+                            <button type="submit" class="btn @(Model.User.IsPrivate ? "btn-dark" : "btn-outline-dark") rounded-pill px-4 fw-bold">
+                                @(Model.User.IsPrivate ? "Fă contul Public" : "Fă contul Privat")
+                            </button>
+                        </form>
+                    }
+                </div>
             }
-            else
+            else if (!Model.IsProfileAdmin)
             {
-                <button class="btn btn-danger rounded-pill px-4 fw-bold">Follow</button>
+                @if (!isAdmin)
+                {
+                    <form asp-action="ToggleFollow" asp-controller="Profiles" method="post">
+                        <input type="hidden" name="userId" value="@Model.User.Id" />
+                        @if (Model.IsFollowing)
+                        {
+                            <button type="submit" class="btn btn-dark rounded-pill px-4 fw-bold">Unfollow</button>
+                        }
+                        else if (Model.HasPendingRequest)
+                        {
+                            <button type="submit" class="btn btn-secondary rounded-pill px-4 fw-bold">Cerere Trimisă</button>
+                        }
+                        else
+                        {
+                            <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold">Follow</button>
+                        }
+                    </form>
+                }
             }
         </div>
     </div>
 
-    <div class="mt-4">
-        <h4 class="fw-bold text-center mb-4">Pin-uri create</h4>
-        @if (!Model.Pins.Any())
-        {
-            <div class="text-center text-muted py-5"><h5>Nu exista pin-uri.</h5></div>
-        }
-        else
-        {
-            <div class="masonry-grid">
-                @foreach (var pin in Model.Pins)
+    @if (isLocked)
+    {
+        <div class="text-center py-5 border rounded-4 bg-light mt-4">
+            <i class="bi bi-lock-fill display-4 text-muted"></i>
+            <h4 class="fw-bold mt-3">Acest cont este privat</h4>
+            <p class="text-muted">Dă follow pentru a vedea conținutul.</p>
+        </div>
+    }
+    else
+    {
+        <ul class="nav nav-pills justify-content-center mb-4" id="pills-tab" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link active" id="pills-pins-tab" data-bs-toggle="pill" data-bs-target="#pills-pins" type="button">Pin-uri</button>
+            </li>
+            @if (!Model.IsProfileAdmin)
+            {
+                <li class="nav-item">
+                    <button class="nav-link" id="pills-followers-tab" data-bs-toggle="pill" data-bs-target="#pills-followers" type="button">Urmăritori</button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" id="pills-following-tab" data-bs-toggle="pill" data-bs-target="#pills-following" type="button">Urmărește</button>
+                </li>
+            }
+            @if (Model.IsOwner && Model.PendingRequests.Any())
+            {
+                <li class="nav-item">
+                    <button class="nav-link text-danger" id="pills-requests-tab" data-bs-toggle="pill" data-bs-target="#pills-requests" type="button">
+                        Cereri (@Model.PendingRequests.Count)
+                    </button>
+                </li>
+            }
+        </ul>
+
+        <div class="tab-content" id="pills-tabContent">
+            <div class="tab-pane fade show active" id="pills-pins">
+                @if (!Model.Pins.Any())
                 {
-                    <div class="card masonry-item border-0 shadow-sm pin-card">
-                        <a asp-controller="Pins" asp-action="Show" asp-route-id="@pin.Id">
-                            <img src="@pin.MediaPath" class="card-img-top rounded-3" style="width: 100%; display: block;">
-                        </a>
+                    <div class="text-center text-muted py-5"><h5>Nu există pin-uri.</h5></div>
+                }
+                else
+                {
+                    <div class="masonry-grid">
+                        @foreach (var pin in Model.Pins)
+                        {
+                            <div class="card masonry-item border-0 shadow-sm pin-card">
+                                <a asp-controller="Pins" asp-action="Show" asp-route-id="@pin.Id"><img src="@pin.MediaPath" class="card-img-top rounded-3" style="width: 100%; display: block;"></a>
+                            </div>
+                        }
                     </div>
                 }
             </div>
-        }
-    </div>
+
+            @if (!Model.IsProfileAdmin)
+            {
+                <div class="tab-pane fade" id="pills-followers">
+                    <div class="row justify-content-center">
+                        <div class="col-md-8">
+                            <ul class="list-group border-0">
+                                @foreach (var person in Model.Followers)
+                                {
+                                    @await Html.PartialAsync("_UserListItem", person)
+                                }
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="pills-following">
+                    <div class="row justify-content-center">
+                        <div class="col-md-8">
+                            <ul class="list-group border-0">
+                                @foreach (var person in Model.Following)
+                                {
+                                    @await Html.PartialAsync("_UserListItem", person)
+                                }
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            @if (Model.IsOwner)
+            {
+                <div class="tab-pane fade" id="pills-requests">
+                    <div class="row justify-content-center">
+                        <div class="col-md-8">
+                            <ul class="list-group border-0">
+                                @foreach (var reqUser in Model.PendingRequests)
+                                {
+                                    <li class="list-group-item border-0 d-flex align-items-center justify-content-between py-3 mb-2 shadow-sm rounded-4">
+                                        <div class="d-flex align-items-center">
+                                            <div class="rounded-circle flex-shrink-0 overflow-hidden me-3 bg-secondary text-white" style="width: 50px; height: 50px;">
+                                                @if (!string.IsNullOrEmpty(reqUser.ProfilePicturePath))
+                                                {
+                                                    <img src="@reqUser.ProfilePicturePath" style="width: 100%; height: 100%; object-fit: cover;" />
+                                                }
+                                                else
+                                                {
+
+                                                    <div class="d-flex justify-content-center align-items-center h-100 fw-bold fs-5">@reqUser.UserName.Substring(0, 1).ToUpper()</div>
+                                                }
+                                            </div>
+                                            <span class="fw-bold fs-5">@reqUser.UserName</span>
+                                        </div>
+                                        <div>
+                                            <form asp-action="AcceptRequest" asp-controller="Profiles" class="d-inline">
+                                                <input type="hidden" name="followerId" value="@reqUser.Id" />
+                                                <button type="submit" class="btn btn-success btn-sm rounded-pill px-3 fw-bold">Acceptă</button>
+                                            </form>
+                                            <form asp-action="DeclineRequest" asp-controller="Profiles" class="d-inline">
+                                                <input type="hidden" name="followerId" value="@reqUser.Id" />
+                                                <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3 fw-bold">Refuză</button>
+                                            </form>
+                                        </div>
+                                    </li>
+                                }
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
 </div>

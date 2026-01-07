@@ -26,7 +26,6 @@
                 <div class="p-4 flex-shrink-0">
 
                     <div class="d-flex justify-content-between align-items-start mb-3">
-
                         <div class="d-flex align-items-center gap-2">
                             @{
                                 var isLiked = false;
@@ -106,8 +105,11 @@
                             var comUser = comment.ApplicationUser?.UserName ?? "Anonim";
                             var comInitial = (!string.IsNullOrEmpty(comUser)) ? comUser.Substring(0, 1).ToUpper() : "U";
                             var comPic = comment.ApplicationUser?.ProfilePicturePath;
-
                             var isCommentOwner = (currentUser == comment.ApplicationUserId);
+
+                            // --- LOGICA LIKE COMENTARIU ---
+                            var comLikesCount = comment.Likes?.Count ?? 0;
+                            var isComLiked = comment.Likes != null && comment.Likes.Any(l => l.ApplicationUserId == currentUser);
 
                             <div class="d-flex mb-3 group-comment position-relative">
                                 <a asp-controller="Profiles" asp-action="Show" asp-route-id="@comment.ApplicationUserId" class="text-decoration-none text-dark d-flex">
@@ -131,26 +133,43 @@
                                             <span class="text-muted small">@comment.CreatedDate.ToString("dd MMM HH:mm")</span>
                                         </div>
 
-                                        @if (isCommentOwner || isAdmin)
-                                        {
-                                            <div class="dropdown">
-                                                <button class="btn btn-link text-muted p-0 ms-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                                    <i class="bi bi-three-dots"></i>
-                                                </button>
-                                                <ul class="dropdown-menu dropdown-menu-end border-0 shadow-sm">
-                                                    @if (isCommentOwner)
-                                                    {
-                                                        <li><a class="dropdown-item small" href="#" onclick="toggleEdit('@comment.Id'); return false;">Editeaza</a></li>
-                                                    }
-                                                    <li>
-                                                        <form asp-action="DeleteComment" asp-controller="Pins" method="post">
-                                                            <input type="hidden" name="commentId" value="@comment.Id" />
-                                                            <button type="submit" class="dropdown-item small text-danger">Sterge</button>
-                                                        </form>
-                                                    </li>
-                                                </ul>
-                                            </div>
-                                        }
+                                        <div class="d-flex align-items-center">
+
+                                            @if (User.Identity.IsAuthenticated)
+                                            {
+                                                <form asp-action="ToggleCommentLike" asp-controller="Pins" method="post" class="me-2">
+                                                    <input type="hidden" name="commentId" value="@comment.Id" />
+                                                    <button type="submit" class="btn btn-sm p-0 border-0" title="Like Comment">
+                                                        <i class="bi @(isComLiked ? "bi-heart-fill text-danger" : "bi-heart text-muted")" style="font-size: 0.8rem;"></i>
+                                                        @if (comLikesCount > 0)
+                                                        {
+                                                            <span class="small text-muted" style="font-size: 0.75rem;">@comLikesCount</span>
+                                                        }
+                                                    </button>
+                                                </form>
+                                            }
+
+                                            @if (isCommentOwner || isAdmin)
+                                            {
+                                                <div class="dropdown">
+                                                    <button class="btn btn-link text-muted p-0 ms-1" type="button" data-bs-toggle="dropdown">
+                                                        <i class="bi bi-three-dots"></i>
+                                                    </button>
+                                                    <ul class="dropdown-menu dropdown-menu-end border-0 shadow-sm">
+                                                        @if (isCommentOwner)
+                                                        {
+                                                            <li><a class="dropdown-item small" href="#" onclick="toggleEdit('@comment.Id'); return false;">Editeaza</a></li>
+                                                        }
+                                                        <li>
+                                                            <form asp-action="DeleteComment" asp-controller="Pins" method="post">
+                                                                <input type="hidden" name="commentId" value="@comment.Id" />
+                                                                <button type="submit" class="dropdown-item small text-danger">Sterge</button>
+                                                            </form>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                            }
+                                        </div>
                                     </div>
 
                                     <div id="comment-text-@comment.Id" style="font-size: 0.95rem;">

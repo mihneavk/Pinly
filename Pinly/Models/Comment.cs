@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace Pinly.Models
@@ -7,18 +9,20 @@ namespace Pinly.Models
         [Key]
         public int Id { get; set; }
 
-        [Required(ErrorMessage = "Conținutul comentariului nu poate fi gol")]
+        [Required]
         public string Content { get; set; }
 
         public DateTime CreatedDate { get; set; }
 
-        // Relația 1:N cu Pin (La ce Pin este comentariul)
-        public int PinId { get; set; } // FK
-        public virtual Pin? Pin { get; set; }
+        // Relatie cu Pin
+        public int PinId { get; set; }
+        public virtual Pin Pin { get; set; }
 
-        // Relația 1:N cu ApplicationUser (Autorul comentariului)
-        public string ApplicationUserId { get; set; } // FK
-        public virtual ApplicationUser? ApplicationUser { get; set; }
-        
+        // Relatie cu User
+        public string ApplicationUserId { get; set; }
+        public virtual ApplicationUser ApplicationUser { get; set; }
+
+        // LISTA DE LIKE-URI (NOU)
+        public virtual ICollection<CommentLike> Likes { get; set; }
     }
 }

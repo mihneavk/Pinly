@@ -14,6 +14,7 @@ namespace Pinly.Models
         public DbSet<Pin> Pins { get; set; }
         public DbSet<Reaction> Reactions { get; set; }
         public DbSet<Comment> Comments { get; set; }
+        public DbSet<CommentLike> CommentLikes { get; set; }
         public DbSet<Group> Groups { get; set; }
         public DbSet<GroupMessage> GroupMessages { get; set; }
         public DbSet<GroupMembership> GroupMemberships { get; set; }
@@ -23,69 +24,62 @@ namespace Pinly.Models
         {
             base.OnModelCreating(builder);
 
-            // 1. Configurare Follow (Restrict pe ambele parti)
+            // 1. Follow
             builder.Entity<Follow>()
                 .HasKey(f => new { f.FollowerId, f.FolloweeId });
-
             builder.Entity<Follow>()
-                .HasOne(f => f.Follower)
-                .WithMany(u => u.Following)
-                .HasForeignKey(f => f.FollowerId)
-                .OnDelete(DeleteBehavior.Restrict);
-
+                .HasOne(f => f.Follower).WithMany(u => u.Following)
+                .HasForeignKey(f => f.FollowerId).OnDelete(DeleteBehavior.Restrict);
             builder.Entity<Follow>()
-                .HasOne(f => f.Followee)
-                .WithMany(u => u.Followers)
-                .HasForeignKey(f => f.FolloweeId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .HasOne(f => f.Followee).WithMany(u => u.Followers)
+                .HasForeignKey(f => f.FolloweeId).OnDelete(DeleteBehavior.Restrict);
 
-            // 2. Configurare Reaction (Fix shadow state + Restrict)
+            // 2. Reaction (Pin Likes)
             builder.Entity<Reaction>()
                 .HasKey(r => new { r.PinId, r.ApplicationUserId });
-
             builder.Entity<Reaction>()
-                .HasOne(r => r.Pin)
-                .WithMany(p => p.Reactions)
-                .HasForeignKey(r => r.PinId)
-                .OnDelete(DeleteBehavior.Restrict);
-
+                .HasOne(r => r.Pin).WithMany(p => p.Reactions)
+                .HasForeignKey(r => r.PinId).OnDelete(DeleteBehavior.Restrict);
             builder.Entity<Reaction>()
-                .HasOne(r => r.ApplicationUser)
-                .WithMany(u => u.Reactions) // Legatura explicita cu User
-                .HasForeignKey(r => r.ApplicationUserId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .HasOne(r => r.ApplicationUser).WithMany(u => u.Reactions)
+                .HasForeignKey(r => r.ApplicationUserId).OnDelete(DeleteBehavior.Restrict);
 
-            // 3. Configurare GroupMembership
+            // 3. CommentLike (Comment Likes - NOU)
+            builder.Entity<CommentLike>()
+                .HasKey(cl => new { cl.CommentId, cl.ApplicationUserId }); // Cheie compusa
+
+            builder.Entity<CommentLike>()
+                .HasOne(cl => cl.Comment)
+                .WithMany(c => c.Likes)
+                .HasForeignKey(cl => cl.CommentId)
+                .OnDelete(DeleteBehavior.Cascade); // Daca stergi comentariul, se sterg like-urile
+
+            builder.Entity<CommentLike>()
+                .HasOne(cl => cl.ApplicationUser)
+                .WithMany()
+                .HasForeignKey(cl => cl.ApplicationUserId)
+                .OnDelete(DeleteBehavior.Restrict); // Evitam cicluri
+
+            // 4. Group Membership
             builder.Entity<GroupMembership>()
                 .HasKey(gm => new { gm.GroupId, gm.ApplicationUserId });
-
             builder.Entity<GroupMembership>()
-                .HasOne(gm => gm.Group)
-                .WithMany(g => g.Memberships)
-                .HasForeignKey(gm => gm.GroupId)
-                .OnDelete(DeleteBehavior.Cascade);
-
+                .HasOne(gm => gm.Group).WithMany(g => g.Memberships)
+                .HasForeignKey(gm => gm.GroupId).OnDelete(DeleteBehavior.Cascade);
             builder.Entity<GroupMembership>()
-                .HasOne(gm => gm.ApplicationUser)
-                .WithMany(u => u.Memberships)
-                .HasForeignKey(gm => gm.ApplicationUserId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .HasOne(gm => gm.ApplicationUser).WithMany(u => u.Memberships)
+                .HasForeignKey(gm => gm.ApplicationUserId).OnDelete(DeleteBehavior.Restrict);
 
-            // 4. Configurare Grupuri (Moderator)
+            // 5. Moderator Grup
             builder.Entity<Group>()
-                .HasOne(g => g.Moderator)
-                .WithMany(u => u.ModeratedGroups)
-                .HasForeignKey(g => g.ModeratorId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .HasOne(g => g.Moderator).WithMany(u => u.ModeratedGroups)
+                .HasForeignKey(g => g.ModeratorId).OnDelete(DeleteBehavior.Restrict);
 
-            // 5. Configurare Comment
+            // 6. Comment
             builder.Entity<Comment>().ToTable("Comment");
-
             builder.Entity<Comment>()
-                .HasOne(c => c.ApplicationUser)
-                .WithMany(u => u.Comments)
-                .HasForeignKey(c => c.ApplicationUserId)
-                .OnDelete(DeleteBehavior.Restrict); // Important: opreste stergerea in cascada
+                .HasOne(c => c.ApplicationUser).WithMany(u => u.Comments)
+                .HasForeignKey(c => c.ApplicationUserId).OnDelete(DeleteBehavior.Restrict);
         }
     }
 }
