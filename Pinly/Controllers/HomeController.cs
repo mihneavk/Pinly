@@ -1,14 +1,14 @@
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore; // Necesar pentru .Include si .ToListAsync
-using Pinly.Models;
 using System.Diagnostics;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Pinly.Models;
 
 namespace Pinly.Controllers
 {
     public class HomeController : Controller
     {
         private readonly ILogger<HomeController> _logger;
-        private readonly AppDbContext _context; // Adaugam contextul bazei de date
+        private readonly AppDbContext _context;
 
         public HomeController(ILogger<HomeController> logger, AppDbContext context)
         {
@@ -18,9 +18,10 @@ namespace Pinly.Controllers
 
         public async Task<IActionResult> Index()
         {
-            // Preluam pin-urile, includem autorul si le ordonam descrescator dupa data
+            // Includem User-ul si Reactiile pentru a afisa corect cardurile si like-urile
             var pins = await _context.Pins
                 .Include(p => p.ApplicationUser)
+                .Include(p => p.Reactions)
                 .OrderByDescending(p => p.CreatedDate)
                 .ToListAsync();
 

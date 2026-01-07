@@ -39,7 +39,6 @@ namespace Pinly.Controllers
             {
                 string uniqueFileName = null;
 
-                // 1. Procesare imagine
                 if (model.Image != null)
                 {
                     string uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, "images", "pins");
@@ -57,10 +56,8 @@ namespace Pinly.Controllers
                     }
                 }
 
-                // 2. User curent
                 var user = await _userManager.GetUserAsync(User);
 
-                // 3. Salvare in DB
                 var pin = new Pin
                 {
                     Title = model.Title,
@@ -86,6 +83,7 @@ namespace Pinly.Controllers
         {
             var pin = await _context.Pins
                 .Include(p => p.ApplicationUser)
+                .Include(p => p.Reactions) // Includem reactiile pentru numaratoare
                 .Include(p => p.Comments)
                     .ThenInclude(c => c.ApplicationUser)
                 .FirstOrDefaultAsync(m => m.Id == id);
@@ -137,13 +135,11 @@ namespace Pinly.Controllers
             var user = await _userManager.GetUserAsync(User);
             var isAdmin = User.IsInRole("Admin");
 
-            // Doar owner sau admin pot sterge
             if (pin.ApplicationUserId != user.Id && !isAdmin)
             {
                 return Forbid();
             }
 
-            // Stergere fisier fizic (optional)
             if (!string.IsNullOrEmpty(pin.MediaPath))
             {
                 var imagePath = Path.Combine(_webHostEnvironment.WebRootPath, pin.MediaPath.TrimStart('/'));
@@ -171,7 +167,6 @@ namespace Pinly.Controllers
             var user = await _userManager.GetUserAsync(User);
             var isAdmin = User.IsInRole("Admin");
 
-            // Verificare permisiuni
             if (comment.ApplicationUserId != user.Id && !isAdmin)
             {
                 return Forbid();
@@ -195,7 +190,6 @@ namespace Pinly.Controllers
 
             var user = await _userManager.GetUserAsync(User);
 
-            // Doar owner poate edita
             if (comment.ApplicationUserId != user.Id)
             {
                 return Forbid();
@@ -208,6 +202,54 @@ namespace Pinly.Controllers
             }
 
             return RedirectToAction("Show", new { id = comment.PinId });
+        }
+
+        // POST: Toggle Like
+        [HttpPost]
+        [Authorize]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ToggleLike(int pinId, string returnUrl)
+        {
+            var user = await _userManager.GetUserAsync(User);
+
+            var reaction = await _context.Reactions
+                .FirstOrDefaultAsync(r => r.PinId == pinId && r.ApplicationUserId == user.Id);
+
+            if (reaction != null)
+            {
+                _context.Reactions.Remove(reaction);
+            }
+            else
+            {
+                var newReaction = new Reaction
+                {
+                    PinId = pinId,
+                    ApplicationUserId = user.Id
+                };
+                _context.Reactions.Add(newReaction);
+            }
+
+            await _context.SaveChangesAsync();
+
+            if (!string.IsNullOrEmpty(returnUrl))
+            {
+                return Redirect(returnUrl);
+            }
+            return RedirectToAction("Index", "Home");
+        }
+
+        // GET: Likers List
+        [HttpGet]
+        public async Task<IActionResult> Likers(int id)
+        {
+            var pin = await _context.Pins
+                .Include(p => p.Reactions)
+                .ThenInclude(r => r.ApplicationUser)
+                .FirstOrDefaultAsync(p => p.Id == id);
+
+            if (pin == null) return NotFound();
+
+            return View(pin);
         }
     }
 }

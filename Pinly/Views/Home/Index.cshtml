@@ -1,7 +1,7 @@
 ﻿@model IEnumerable<Pinly.Models.Pin>
 
 @{
-    ViewData["Title"] = "Acasă";
+    ViewData["Title"] = "Acasa";
 }
 
 <style>
@@ -16,16 +16,19 @@
         margin-bottom: 1.5rem;
         break-inside: avoid;
     }
+
     @@media (max-width: 992px) {
         .masonry-grid {
             column-count: 3;
         }
     }
+
     @@media (max-width: 768px) {
         .masonry-grid {
             column-count: 2;
         }
     }
+
     @@media (max-width: 576px) {
         .masonry-grid {
             column-count: 1;
@@ -44,9 +47,9 @@
 {
     <div class="jumbotron text-center bg-light p-5 mb-5 rounded-3">
         <h1 class="display-4 fw-bold" style="color: #E60023;">Bine ai venit pe Pinly!</h1>
-        <p class="lead">Descoperă inspirația pentru următorul tău proiect.</p>
+        <p class="lead">Descopera inspiratia pentru urmatorul tau proiect.</p>
         <hr class="my-4">
-        <a class="btn btn-danger btn-lg" asp-area="Identity" asp-page="/Account/Register" role="button">Înregistrează-te</a>
+        <a class="btn btn-danger btn-lg" asp-area="Identity" asp-page="/Account/Register" role="button">Inregistreaza-te</a>
         <a class="btn btn-outline-secondary btn-lg" asp-area="Identity" asp-page="/Account/Login" role="button">Autentificare</a>
     </div>
 }
@@ -54,14 +57,14 @@ else
 {
     <div class="container mb-4 d-flex justify-content-between align-items-center">
         <h4 class="fw-bold">Cele mai noi Pin-uri</h4>
-        <a asp-controller="Pins" asp-action="Create" class="btn btn-danger rounded-pill px-4"><i class="bi bi-plus-lg"></i> Adaugă Pin</a>
+        <a asp-controller="Pins" asp-action="Create" class="btn btn-danger rounded-pill px-4"><i class="bi bi-plus-lg"></i> Adauga Pin</a>
     </div>
 }
 
 <div class="container-fluid">
     @if (!Model.Any())
     {
-        <div class="text-center mt-5"><h3 class="text-muted">Încă nu există pin-uri. Fii tu primul care postează!</h3></div>
+        <div class="text-center mt-5"><h3 class="text-muted">Inca nu exista pin-uri. Fii tu primul care posteaza!</h3></div>
     }
     else
     {
@@ -86,14 +89,12 @@ else
                         <div class="d-flex align-items-center justify-content-between mt-2 pt-2 border-top">
                             <div class="d-flex align-items-center" style="min-width: 0;">
                                 @{
-                                    var displayName = pin.ApplicationUser?.FullName;
-                                    if (string.IsNullOrWhiteSpace(displayName)) displayName = pin.ApplicationUser?.UserName?.Split('@')[0] ?? "Anonim";
+                                    var displayName = pin.ApplicationUser?.UserName ?? "Anonim";
                                     var initial = (!string.IsNullOrEmpty(displayName)) ? displayName.Substring(0, 1).ToUpper() : "U";
-                                    var profilePic = pin.ApplicationUser?.ProfilePicturePath; // Luăm calea pozei
+                                    var profilePic = pin.ApplicationUser?.ProfilePicturePath;
                                 }
 
                                 <a asp-controller="Profiles" asp-action="Show" asp-route-id="@pin.ApplicationUserId" class="d-flex align-items-center text-decoration-none text-dark" style="min-width: 0;">
-
                                     <div class="rounded-circle flex-shrink-0 overflow-hidden"
                                          style="width: 32px; height: 32px; margin-right: 10px; background-color: #f0f0f0;">
                                         @if (!string.IsNullOrEmpty(profilePic))
@@ -105,13 +106,30 @@ else
                                             <div class="d-flex justify-content-center align-items-center h-100 fw-bold text-dark">@initial</div>
                                         }
                                     </div>
-
                                     <div class="d-flex flex-column text-truncate">
                                         <span class="fw-bold text-dark text-truncate" style="font-size: 0.85rem; max-width: 120px;">@displayName</span>
                                     </div>
                                 </a>
                             </div>
-                            <button class="btn btn-sm btn-light rounded-circle text-muted"><i class="bi bi-heart-fill" style="color: #e2e2e2;"></i></button>
+
+                            @{
+                                var isLiked = false;
+                                if (User.Identity.IsAuthenticated)
+                                {
+                                    var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                                    isLiked = pin.Reactions.Any(r => r.ApplicationUserId == userId);
+                                }
+                            }
+
+                            <form asp-controller="Pins" asp-action="ToggleLike" method="post">
+                                <input type="hidden" name="pinId" value="@pin.Id" />
+                                <input type="hidden" name="returnUrl" value="@Context.Request.Path" />
+
+                                <button type="submit" class="btn btn-sm rounded-circle @(isLiked ? "btn-danger" : "btn-light")"
+                                        title="@(isLiked ? "Unlike" : "Like")">
+                                    <i class="bi @(isLiked ? "bi-heart-fill" : "bi-heart")" style="@(isLiked ? "color: white;" : "color: #e2e2e2;")"></i>
+                                </button>
+                            </form>
                         </div>
                     </div>
                 </div>

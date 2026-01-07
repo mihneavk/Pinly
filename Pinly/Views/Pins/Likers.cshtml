@@ -1,0 +1,54 @@
+﻿@model Pinly.Models.Pin
+
+@{
+    ViewData["Title"] = "Aprecieri";
+}
+
+<div class="container mt-5" style="max-width: 600px;">
+    <div class="d-flex align-items-center mb-4">
+        <a asp-action="Show" asp-route-id="@Model.Id" class="btn btn-light rounded-circle me-3">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <h3 class="fw-bold mb-0">Persoane care au apreciat</h3>
+    </div>
+
+    <div class="card shadow-sm border-0 rounded-4">
+        <div class="card-body p-0">
+            @if (!Model.Reactions.Any())
+            {
+                <div class="p-4 text-center text-muted">
+                    Nimeni nu a apreciat inca acest pin.
+                </div>
+            }
+            else
+            {
+                <ul class="list-group list-group-flush rounded-4">
+                    @foreach (var reaction in Model.Reactions)
+                    {
+                        var username = reaction.ApplicationUser?.UserName ?? "Anonim";
+                        var pic = reaction.ApplicationUser?.ProfilePicturePath;
+                        var initial = (!string.IsNullOrEmpty(username)) ? username.Substring(0, 1).ToUpper() : "U";
+
+                        <li class="list-group-item d-flex align-items-center p-3 border-0 border-bottom">
+                            <a asp-controller="Profiles" asp-action="Show" asp-route-id="@reaction.ApplicationUserId" class="d-flex align-items-center text-decoration-none text-dark w-100">
+
+                                <div class="rounded-circle flex-shrink-0 overflow-hidden me-3 bg-secondary text-white" style="width: 48px; height: 48px;">
+                                    @if (!string.IsNullOrEmpty(pic))
+                                    {
+                                        <img src="@pic" style="width: 100%; height: 100%; object-fit: cover;" />
+                                    }
+                                    else
+                                    {
+                                        <div class="d-flex justify-content-center align-items-center h-100 fw-bold fs-5">@initial</div>
+                                    }
+                                </div>
+
+                                <span class="fw-bold fs-5">@username</span>
+                            </a>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    </div>
+</div>

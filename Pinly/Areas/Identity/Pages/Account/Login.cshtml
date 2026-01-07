@@ -2,79 +2,111 @@
 @model LoginModel
 
 @{
-    ViewData["Title"] = "Log in";
+    ViewData["Title"] = "Logare";
 }
 
-<h1>@ViewData["Title"]</h1>
-<div class="row">
-    <div class="col-md-4">
-        <section>
-            <form id="account" method="post">
-                <h2>Use a local account to log in.</h2>
-                <hr />
-                <div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
-                <div class="form-floating mb-3">
-                    <input asp-for="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com" />
-                    <label asp-for="Input.Email" class="form-label">Email</label>
-                    <span asp-validation-for="Input.Email" class="text-danger"></span>
-                </div>
-                <div class="form-floating mb-3">
-                    <input asp-for="Input.Password" class="form-control" autocomplete="current-password" aria-required="true" placeholder="password" />
-                    <label asp-for="Input.Password" class="form-label">Password</label>
-                    <span asp-validation-for="Input.Password" class="text-danger"></span>
-                </div>
-                <div class="checkbox mb-3">
-                    <label asp-for="Input.RememberMe" class="form-label">
-                        <input class="form-check-input" asp-for="Input.RememberMe" />
-                        @Html.DisplayNameFor(m => m.Input.RememberMe)
-                    </label>
-                </div>
-                <div>
-                    <button id="login-submit" type="submit" class="w-100 btn btn-lg btn-primary">Log in</button>
-                </div>
-                <div>
-                    <p>
-                        <a id="forgot-password" asp-page="./ForgotPassword">Forgot your password?</a>
-                    </p>
-                    <p>
-                        <a asp-page="./Register" asp-route-returnUrl="@Model.ReturnUrl">Register as a new user</a>
-                    </p>
-                    <p>
-                        <a id="resend-confirmation" asp-page="./ResendEmailConfirmation">Resend email confirmation</a>
-                    </p>
-                </div>
-            </form>
-        </section>
-    </div>
-    <div class="col-md-6 col-md-offset-2">
-        <section>
-            <h3>Use another service to log in.</h3>
-            <hr />
-            @{
-                if ((Model.ExternalLogins?.Count ?? 0) == 0)
-                {
-                    <div>
-                        <p>
-                            There are no external authentication services configured. See this <a href="https://go.microsoft.com/fwlink/?LinkID=532715">article
-                            about setting up this ASP.NET application to support logging in via external services</a>.
-                        </p>
+<style>
+    /* Stil pentru input-uri rotunjite */
+    .form-control {
+        border-radius: 50px;
+        padding-left: 20px;
+        border: 1px solid #ddd;
+    }
+
+        .form-control:focus {
+            border-color: #E60023;
+            box-shadow: 0 0 0 0.25rem rgba(230, 0, 35, 0.25);
+        }
+
+    /* Stil buton logare */
+    .btn-login {
+        background-color: #E60023;
+        border: none;
+        border-radius: 50px;
+        padding: 10px 0;
+        transition: 0.3s;
+    }
+
+        .btn-login:hover {
+            background-color: #ad081b;
+        }
+
+    /* Logo animat la hover */
+    .login-logo {
+        width: 50px;
+        height: 50px;
+        background-color: #E60023;
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        font-weight: bold;
+        margin: 0 auto 20px auto;
+        transition: transform 0.3s;
+    }
+
+        .login-logo:hover {
+            transform: rotate(15deg) scale(1.1);
+        }
+</style>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-5 col-lg-4">
+
+            <div class="card shadow-lg border-0 rounded-4 p-4">
+                <div class="card-body">
+
+                    <div class="text-center">
+                        <div class="login-logo">
+                            <i class="bi bi-pinterest"></i>
+                        </div>
+                        <h3 class="fw-bold mb-1">Bine ai revenit</h3>
+                        <p class="text-muted mb-4">Inspirația te așteaptă</p>
                     </div>
-                }
-                else
-                {
-                    <form id="external-account" asp-page="./ExternalLogin" asp-route-returnUrl="@Model.ReturnUrl" method="post" class="form-horizontal">
-                        <div>
+
+                    <form id="account" method="post">
+                        <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert"></div>
+
+                        <div class="form-floating mb-3">
+                            <input asp-for="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com" />
+                            <label asp-for="Input.Email" class="ps-4">Email</label>
+                            <span asp-validation-for="Input.Email" class="text-danger small ps-3"></span>
+                        </div>
+
+                        <div class="form-floating mb-3">
+                            <input asp-for="Input.Password" class="form-control" autocomplete="current-password" aria-required="true" placeholder="password" />
+                            <label asp-for="Input.Password" class="ps-4">Parolă</label>
+                            <span asp-validation-for="Input.Password" class="text-danger small ps-3"></span>
+                        </div>
+
+                        <div class="checkbox mb-3 ms-2">
+                            <label asp-for="Input.RememberMe" class="form-label text-muted">
+                                <input class="form-check-input me-1" asp-for="Input.RememberMe" />
+                                Ține-mă minte
+                            </label>
+                        </div>
+
+                        <button id="login-submit" type="submit" class="w-100 btn btn-lg btn-primary btn-login fw-bold text-white mb-3">
+                            Logare
+                        </button>
+
+                        <div class="text-center mt-3">
+                            <p class="mb-1">
+                                <a id="forgot-password" asp-page="./ForgotPassword" class="text-decoration-none text-muted small">Ai uitat parola?</a>
+                            </p>
                             <p>
-                                @foreach (var provider in Model.ExternalLogins!)
-                                {
-                                    <button type="submit" class="btn btn-primary" name="provider" value="@provider.Name" title="Log in using your @provider.DisplayName account">@provider.DisplayName</button>
-                                }
+                                Nu ai cont?
+                                <a asp-page="./Register" asp-route-returnUrl="@Model.ReturnUrl" class="text-decoration-none fw-bold" style="color: #E60023;">Înregistrează-te</a>
                             </p>
                         </div>
                     </form>
-                }
-            }
-        </section>
+                </div>
+            </div>
+
+        </div>
     </div>
 </div>
 
