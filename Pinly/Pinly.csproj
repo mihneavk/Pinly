@@ -7,6 +7,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Remove="wwwroot\images\pins\3a9c562d-86b8-4ad8-adac-4ee35021eeb5_Screenshot 2025-10-20 150019.png" />
+    <Content Remove="wwwroot\images\pins\643e4e58-f892-4127-8a38-999efae5718a_zona_selectata.png" />
+    <Content Remove="wwwroot\images\pins\e912adb2-380e-406c-864d-5778eaa21ab3_Screenshot 2024-11-24 165732.png" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.11" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="9.0.11" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.11">

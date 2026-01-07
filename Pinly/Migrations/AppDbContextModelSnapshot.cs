@@ -267,7 +267,7 @@ namespace Pinly.Migrations
 
                     b.HasIndex("PinId");
 
-                    b.ToTable("Comments");
+                    b.ToTable("Comment", (string)null);
                 });
 
             modelBuilder.Entity("Pinly.Models.Follow", b =>
@@ -408,17 +408,12 @@ namespace Pinly.Migrations
                     b.Property<string>("ApplicationUserId")
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<string>("ApplicationUserId1")
-                        .HasColumnType("nvarchar(450)");
-
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("datetime2");
 
                     b.HasKey("PinId", "ApplicationUserId");
 
                     b.HasIndex("ApplicationUserId");
-
-                    b.HasIndex("ApplicationUserId1");
 
                     b.ToTable("Reactions");
                 });
@@ -479,7 +474,7 @@ namespace Pinly.Migrations
                     b.HasOne("Pinly.Models.ApplicationUser", "ApplicationUser")
                         .WithMany("Comments")
                         .HasForeignKey("ApplicationUserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("Pinly.Models.Pin", "Pin")
@@ -575,14 +570,10 @@ namespace Pinly.Migrations
             modelBuilder.Entity("Pinly.Models.Reaction", b =>
                 {
                     b.HasOne("Pinly.Models.ApplicationUser", "ApplicationUser")
-                        .WithMany()
+                        .WithMany("Reactions")
                         .HasForeignKey("ApplicationUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.HasOne("Pinly.Models.ApplicationUser", null)
-                        .WithMany("Reactions")
-                        .HasForeignKey("ApplicationUserId1");
 
                     b.HasOne("Pinly.Models.Pin", "Pin")
                         .WithMany("Reactions")

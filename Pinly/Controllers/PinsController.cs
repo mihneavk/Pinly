@@ -7,7 +7,7 @@ using Pinly.ViewModels;
 
 namespace Pinly.Controllers
 {
-    [Authorize] // Doar utilizatorii logați pot accesa acest controller
+    [Authorize]
     public class PinsController : Controller
     {
         private readonly AppDbContext _context;
@@ -39,66 +39,55 @@ namespace Pinly.Controllers
             {
                 string uniqueFileName = null;
 
-                // 1. Procesare și salvare imagine pe server
+                // 1. Procesare imagine
                 if (model.Image != null)
                 {
-                    // Calea către folderul wwwroot/images/pins
                     string uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, "images", "pins");
-
-                    // Creăm folderul dacă nu există
                     if (!Directory.Exists(uploadsFolder))
                     {
                         Directory.CreateDirectory(uploadsFolder);
                     }
 
-                    // Generăm nume unic (Guid) + extensia originală
                     uniqueFileName = Guid.NewGuid().ToString() + "_" + model.Image.FileName;
-
-                    // Calea completă pe disc
                     string filePath = Path.Combine(uploadsFolder, uniqueFileName);
 
-                    // Copierea fișierului (Async)
                     using (var fileStream = new FileStream(filePath, FileMode.Create))
                     {
                         await model.Image.CopyToAsync(fileStream);
                     }
                 }
 
-                // 2. Preluare user curent
+                // 2. User curent
                 var user = await _userManager.GetUserAsync(User);
 
-                // 3. Mapare ViewModel -> Model de Bază de Date
+                // 3. Salvare in DB
                 var pin = new Pin
                 {
                     Title = model.Title,
                     Description = model.Description,
-                    // Salvăm calea relativă pentru a o folosi în <img src="...">
                     MediaPath = "/images/pins/" + uniqueFileName,
                     CreatedDate = DateTime.Now,
                     ApplicationUserId = user.Id
                 };
 
-                // 4. Salvare în DB
                 _context.Pins.Add(pin);
                 await _context.SaveChangesAsync();
 
-                // Redirect către prima pagină
                 return RedirectToAction("Index", "Home");
             }
 
-            // Dacă validarea eșuează, reafisăm formularul cu erori
             return View(model);
         }
 
-        // GET: Afișează pagina unui Pin specific
+        // GET: Show Pin
         [HttpGet]
-        [AllowAnonymous] // Lăsăm și oaspeții să vadă pinul, dar nu să comenteze
+        [AllowAnonymous]
         public async Task<IActionResult> Show(int id)
         {
             var pin = await _context.Pins
-                .Include(p => p.ApplicationUser) // Încărcăm autorul pinului
-                .Include(p => p.Comments) // Încărcăm comentariile
-                    .ThenInclude(c => c.ApplicationUser) // Încărcăm autorii comentariilor
+                .Include(p => p.ApplicationUser)
+                .Include(p => p.Comments)
+                    .ThenInclude(c => c.ApplicationUser)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
             if (pin == null)
@@ -109,15 +98,14 @@ namespace Pinly.Controllers
             return View(pin);
         }
 
-        // POST: Adaugă un comentariu
+        // POST: Add Comment
         [HttpPost]
-        [Authorize] // Trebuie să fii logat ca să comentezi
+        [Authorize]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AddComment(int pinId, string content)
         {
             if (string.IsNullOrWhiteSpace(content))
             {
-                // Dacă comentariul e gol, reîncărcăm pagina
                 return RedirectToAction("Show", new { id = pinId });
             }
 
@@ -134,8 +122,92 @@ namespace Pinly.Controllers
             _context.Comments.Add(comment);
             await _context.SaveChangesAsync();
 
-            // Ne întoarcem la aceeași pagină pentru a vedea comentariul
             return RedirectToAction("Show", new { id = pinId });
+        }
+
+        // POST: Delete Pin
+        [HttpPost]
+        [Authorize]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var pin = await _context.Pins.FindAsync(id);
+            if (pin == null) return NotFound();
+
+            var user = await _userManager.GetUserAsync(User);
+            var isAdmin = User.IsInRole("Admin");
+
+            // Doar owner sau admin pot sterge
+            if (pin.ApplicationUserId != user.Id && !isAdmin)
+            {
+                return Forbid();
+            }
+
+            // Stergere fisier fizic (optional)
+            if (!string.IsNullOrEmpty(pin.MediaPath))
+            {
+                var imagePath = Path.Combine(_webHostEnvironment.WebRootPath, pin.MediaPath.TrimStart('/'));
+                if (System.IO.File.Exists(imagePath))
+                {
+                    System.IO.File.Delete(imagePath);
+                }
+            }
+
+            _context.Pins.Remove(pin);
+            await _context.SaveChangesAsync();
+
+            return RedirectToAction("Index", "Home");
+        }
+
+        // POST: Delete Comment
+        [HttpPost]
+        [Authorize]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteComment(int commentId)
+        {
+            var comment = await _context.Comments.FindAsync(commentId);
+            if (comment == null) return NotFound();
+
+            var user = await _userManager.GetUserAsync(User);
+            var isAdmin = User.IsInRole("Admin");
+
+            // Verificare permisiuni
+            if (comment.ApplicationUserId != user.Id && !isAdmin)
+            {
+                return Forbid();
+            }
+
+            var pinId = comment.PinId;
+            _context.Comments.Remove(comment);
+            await _context.SaveChangesAsync();
+
+            return RedirectToAction("Show", new { id = pinId });
+        }
+
+        // POST: Edit Comment
+        [HttpPost]
+        [Authorize]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditComment(int commentId, string newContent)
+        {
+            var comment = await _context.Comments.FindAsync(commentId);
+            if (comment == null) return NotFound();
+
+            var user = await _userManager.GetUserAsync(User);
+
+            // Doar owner poate edita
+            if (comment.ApplicationUserId != user.Id)
+            {
+                return Forbid();
+            }
+
+            if (!string.IsNullOrWhiteSpace(newContent))
+            {
+                comment.Content = newContent;
+                await _context.SaveChangesAsync();
+            }
+
+            return RedirectToAction("Show", new { id = comment.PinId });
         }
     }
 }
