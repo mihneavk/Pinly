@@ -21,8 +21,7 @@
         <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
             <div class="container-fluid">
                 <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">Pinly</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
@@ -35,36 +34,41 @@
                         </li>
                     </ul>
 
-                    <ul class="navbar-nav">
+                    <div class="position-relative ms-auto me-3" style="min-width: 250px;">
+                        <input type="text" id="userSearchInput" class="form-control rounded-pill border-0 bg-light" placeholder="Cauta persoane..." autocomplete="off" style="padding-left: 20px;">
+                        <div id="searchResults" class="list-group position-absolute w-100 shadow-lg rounded-3 mt-1" style="display: none; z-index: 9999; overflow: hidden;"></div>
+                    </div>
+
+                    <ul class="navbar-nav align-items-center">
                         @if (SignInManager.IsSignedIn(User))
                         {
-                            @* --- UTILIZATOR LOGAT --- *@
+                            <li class="nav-item dropdown me-2">
+                                <a class="nav-link text-dark position-relative" href="#" id="notifDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="bi bi-bell-fill fs-5"></i>
+                                    <span id="notifBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display:none; font-size: 0.6rem;">0</span>
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 rounded-3 p-0" aria-labelledby="notifDropdown" style="width: 320px; max-height: 400px; overflow-y: auto;" id="notifList">
+                                    <li class="text-center p-3 text-muted small">Se incarca...</li>
+                                </ul>
+                            </li>
+
                             <li class="nav-item">
-                                @* Link către Profilul Personalizat *@
                                 <a class="nav-link text-dark fw-bold" asp-area="" asp-controller="Profiles" asp-action="Show" asp-route-id="@UserManager.GetUserId(User)" title="Vezi Profil">
-                                    <i class="bi bi-person-circle"></i> Salut, @UserManager.GetUserName(User)!
+                                    <i class="bi bi-person-circle"></i> @UserManager.GetUserName(User)
                                 </a>
                             </li>
                             <li class="nav-item">
                                 <form class="form-inline" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })">
-                                    <button type="submit" class="nav-link btn btn-link text-dark" style="cursor:pointer; border:none; background:none;">
-                                        Logout
-                                    </button>
+                                    <button type="submit" class="nav-link btn btn-link text-dark" style="cursor:pointer; border:none; background:none;">Logout</button>
                                 </form>
                             </li>
                         }
                         else
                         {
-                            @* --- VIZITATOR (NELOGAT) --- *@
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Register">Register</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Login">Login</a>
-                            </li>
+                            <li class="nav-item"><a class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Register">Register</a></li>
+                            <li class="nav-item"><a class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Login">Login</a></li>
                         }
                     </ul>
-
                 </div>
             </div>
         </nav>
@@ -84,5 +88,139 @@
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
+
+    <style>
+        #searchResults .list-group-item {
+            border: none;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+            #searchResults .list-group-item:hover {
+                background-color: #f9f9f9;
+            }
+
+        .notif-item {
+            font-size: 0.9rem;
+            border-bottom: 1px solid #eee;
+        }
+
+            .notif-item:hover {
+                background-color: #f8f8f8;
+            }
+
+        .notif-unread {
+            background-color: #fff5f5;
+        }
+    </style>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // SEARCH
+            const searchInput = document.getElementById('userSearchInput');
+            const resultsBox = document.getElementById('searchResults');
+            let searchTimeout = null;
+
+            if(searchInput) {
+                searchInput.addEventListener('input', function() {
+                    const term = this.value;
+                    if (term.length < 1) { resultsBox.style.display = 'none'; return; }
+                    clearTimeout(searchTimeout);
+                    searchTimeout = setTimeout(() => { fetchUsers(term); }, 300);
+                });
+                document.addEventListener('click', function(e) {
+                    if (!searchInput.contains(e.target) && !resultsBox.contains(e.target)) { resultsBox.style.display = 'none'; }
+                });
+            }
+
+            function fetchUsers(term) {
+                fetch(`/Profiles/SearchUsers?term=${encodeURIComponent(term)}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        resultsBox.innerHTML = '';
+                        if (data.length === 0) resultsBox.innerHTML = '<div class="list-group-item text-muted small p-3">Niciun utilizator gasit.</div>';
+                        else {
+                            data.forEach(user => {
+                                let avatar = user.avatar ? `<img src="${user.avatar}" class="rounded-circle" style="width:32px;height:32px;object-fit:cover;margin-right:10px;">` : `<div class="rounded-circle d-flex align-items-center justify-content-center bg-secondary text-white fw-bold" style="width:32px;height:32px;margin-right:10px;">${user.username.charAt(0).toUpperCase()}</div>`;
+                                const item = document.createElement('a');
+                                item.href = `/Profiles/Show/${user.id}`;
+                                item.className = 'list-group-item list-group-item-action d-flex align-items-center p-2';
+                                item.innerHTML = `${avatar}<span class="fw-bold text-dark">${user.username}</span>`;
+                                resultsBox.appendChild(item);
+                            });
+                        }
+                        resultsBox.style.display = 'block';
+                    });
+            }
+
+            // NOTIFICATIONS
+            const notifDropdown = document.getElementById('notifDropdown');
+            const notifList = document.getElementById('notifList');
+            const notifBadge = document.getElementById('notifBadge');
+
+            if(notifDropdown) {
+                loadNotifications(true); // Incarca badge-ul initial
+
+                notifDropdown.addEventListener('show.bs.dropdown', function () {
+                    // 1. Ascunde badge-ul imediat vizual
+                    notifBadge.style.display = 'none';
+
+                    // 2. Marcheaza tot ca citit in spate
+                    fetch('/Notifications/MarkAllRead', { method: 'POST' });
+
+                    // 3. Reincarca lista (cu parametrul false ca sa nu puna badge-ul la loc)
+                    loadNotifications(false);
+                });
+            }
+
+            function loadNotifications(updateBadge = true) {
+                fetch('/Notifications/GetLatest')
+                    .then(r => r.json())
+                    .then(data => {
+                        notifList.innerHTML = '';
+                        let unreadCount = 0;
+                        if (data.length === 0) notifList.innerHTML = '<li class="text-center p-3 text-muted small">Nu ai notificări noi.</li>';
+                        else {
+                            data.forEach(n => {
+                                if (!n.isRead) unreadCount++;
+                                let bgClass = n.isRead ? '' : 'notif-unread';
+                                let avatar = n.senderPic ? `<img src="${n.senderPic}" class="rounded-circle me-2" style="width:36px;height:36px;object-fit:cover;">` : `<div class="rounded-circle me-2 d-flex align-items-center justify-content-center bg-secondary text-white fw-bold" style="width:36px;height:36px;">${n.senderName.charAt(0).toUpperCase()}</div>`;
+                                let content = `<div class="d-flex align-items-start w-100">${avatar}<div class="flex-grow-1"><div><span class="fw-bold">${n.senderName}</span> ${n.text}</div><div class="text-muted" style="font-size:0.75rem;">${n.date}</div>${getActionButtons(n)}</div></div>`;
+                                let li = document.createElement('li');
+                                li.className = `dropdown-item p-2 text-wrap notif-item ${bgClass}`;
+                                if(n.type !== 'Request') {
+                                    li.style.cursor = 'pointer';
+                                    li.onclick = (e) => {
+                                        if(e.target.tagName === 'BUTTON') return;
+                                        window.location.href = n.pinId ? `/Pins/Show/${n.pinId}` : `/Profiles/Show/${n.senderId}`;
+                                    };
+                                }
+                                li.innerHTML = content;
+                                notifList.appendChild(li);
+                            });
+                        }
+
+                        // Actualizeaza badge-ul DOAR daca updateBadge este true
+                        if (updateBadge) {
+                            if (unreadCount > 0) { notifBadge.innerText = unreadCount; notifBadge.style.display = 'block'; }
+                            else { notifBadge.style.display = 'none'; }
+                        }
+                    });
+            }
+
+            function getActionButtons(n) {
+                if (n.type === 'Request') {
+                    return `<div class="mt-2"><button onclick="respondRequest(${n.id}, true)" class="btn btn-sm btn-danger rounded-pill px-3 py-0 me-1" style="font-size:0.8rem;">Acceptă</button><button onclick="respondRequest(${n.id}, false)" class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-0" style="font-size:0.8rem;">Refuză</button></div>`;
+                }
+                return '';
+            }
+
+            window.respondRequest = function(notifId, accept) {
+                let url = accept ? '/Notifications/AcceptRequest' : '/Notifications/DeclineRequest';
+                fetch(url + `?notificationId=${notifId}`, { method: 'POST' }).then(r => { if(r.ok) loadNotifications(false); });
+            };
+        });
+    </script>
 </body>
 </html>

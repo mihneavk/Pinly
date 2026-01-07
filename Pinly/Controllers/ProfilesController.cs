@@ -35,8 +35,6 @@ namespace Pinly.Controllers
             var currentUser = await _userManager.GetUserAsync(User);
             bool isOwner = currentUser != null && currentUser.Id == userProfile.Id;
             bool isProfileAdmin = await _userManager.IsInRoleAsync(userProfile, "Admin");
-
-            // Verificam daca vizitatorul este Admin
             bool isAdminVisitor = currentUser != null && await _userManager.IsInRoleAsync(currentUser, "Admin");
 
             bool isFollowing = false;
@@ -52,8 +50,6 @@ namespace Pinly.Controllers
                 }
             }
 
-            // LOGICA PRIVATE: 
-            // Daca e privat SI nu il urmaresc SI nu sunt eu SI nu sunt Admin => BLOCAT
             bool isLocked = userProfile.IsPrivate && !isFollowing && !isOwner && !isAdminVisitor;
 
             List<Pin> pins = new List<Pin>();
@@ -72,12 +68,10 @@ namespace Pinly.Controllers
                 followingList = userProfile.Following.Where(f => f.IsAccepted).Select(f => f.Followee).ToList();
             }
 
-            // Ownerul vede tot (si cererile in asteptare)
             if (isOwner)
             {
                 pendingList = userProfile.Followers.Where(f => !f.IsAccepted).Select(f => f.Follower).ToList();
 
-                // Daca e owner, incarcam listele chiar daca a fost marcat ca locked mai sus
                 if (isLocked)
                 {
                     pins = await _context.Pins.Where(p => p.ApplicationUserId == id).OrderByDescending(p => p.CreatedDate).ToListAsync();
@@ -102,7 +96,6 @@ namespace Pinly.Controllers
             return View(model);
         }
 
-        // Toggle Privacy
         [HttpPost]
         [Authorize]
         [ValidateAntiForgeryToken]
@@ -110,12 +103,7 @@ namespace Pinly.Controllers
         {
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return NotFound();
-
-            // Adminul nu are voie sa fie privat (verificare backend)
-            if (await _userManager.IsInRoleAsync(user, "Admin"))
-            {
-                return Forbid();
-            }
+            if (await _userManager.IsInRoleAsync(user, "Admin")) return Forbid();
 
             user.IsPrivate = !user.IsPrivate;
             await _userManager.UpdateAsync(user);
@@ -131,16 +119,10 @@ namespace Pinly.Controllers
             var currentUser = await _userManager.GetUserAsync(User);
             if (currentUser == null) return Challenge();
             if (currentUser.Id == userId) return BadRequest("Nu te poti urmari singur");
-
-            // Adminul nu are voie sa dea follow (verificare backend)
-            if (await _userManager.IsInRoleAsync(currentUser, "Admin"))
-            {
-                return Forbid();
-            }
+            if (await _userManager.IsInRoleAsync(currentUser, "Admin")) return Forbid();
 
             var targetUser = await _userManager.FindByIdAsync(userId);
             if (targetUser == null) return NotFound();
-
             if (await _userManager.IsInRoleAsync(targetUser, "Admin")) return BadRequest("Nu poti urmari adminul");
 
             var existingFollow = await _context.Follows
@@ -148,10 +130,17 @@ namespace Pinly.Controllers
 
             if (existingFollow != null)
             {
+                // Unfollow
                 _context.Follows.Remove(existingFollow);
+
+                // Sterge notificare veche daca exista
+                var oldNotif = await _context.Notifications
+                    .FirstOrDefaultAsync(n => n.SenderId == currentUser.Id && n.RecipientId == targetUser.Id && (n.Type == "Follow" || n.Type == "Request"));
+                if (oldNotif != null) _context.Notifications.Remove(oldNotif);
             }
             else
             {
+                // Follow nou
                 var newFollow = new Follow
                 {
                     FollowerId = currentUser.Id,
@@ -159,48 +148,71 @@ namespace Pinly.Controllers
                     IsAccepted = !targetUser.IsPrivate
                 };
                 _context.Follows.Add(newFollow);
+
+                // Creare Notificare
+                var notif = new Notification
+                {
+                    SenderId = currentUser.Id,
+                    RecipientId = targetUser.Id,
+                    CreatedDate = DateTime.Now,
+                    IsRead = false
+                };
+
+                if (targetUser.IsPrivate)
+                {
+                    notif.Type = "Request";
+                    notif.Text = "vrea sa te urmareasca.";
+                }
+                else
+                {
+                    notif.Type = "Follow";
+                    notif.Text = "a inceput sa te urmareasca.";
+                }
+                _context.Notifications.Add(notif);
             }
             await _context.SaveChangesAsync();
             return RedirectToAction("Show", new { id = userId });
         }
 
-        // Accept Request
         [HttpPost]
         [Authorize]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AcceptRequest(string followerId)
         {
             var currentUser = await _userManager.GetUserAsync(User);
-            var follow = await _context.Follows
-                .FirstOrDefaultAsync(f => f.FollowerId == followerId && f.FolloweeId == currentUser.Id);
+            var follow = await _context.Follows.FirstOrDefaultAsync(f => f.FollowerId == followerId && f.FolloweeId == currentUser.Id);
 
             if (follow != null)
             {
                 follow.IsAccepted = true;
                 await _context.SaveChangesAsync();
+
+                // Sterge notificare request
+                var notif = await _context.Notifications.FirstOrDefaultAsync(n => n.SenderId == followerId && n.RecipientId == currentUser.Id && n.Type == "Request");
+                if (notif != null) { _context.Notifications.Remove(notif); await _context.SaveChangesAsync(); }
             }
             return RedirectToAction("Show", new { id = currentUser.Id });
         }
 
-        // Decline Request
         [HttpPost]
         [Authorize]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeclineRequest(string followerId)
         {
             var currentUser = await _userManager.GetUserAsync(User);
-            var follow = await _context.Follows
-                .FirstOrDefaultAsync(f => f.FollowerId == followerId && f.FolloweeId == currentUser.Id);
+            var follow = await _context.Follows.FirstOrDefaultAsync(f => f.FollowerId == followerId && f.FolloweeId == currentUser.Id);
 
             if (follow != null)
             {
                 _context.Follows.Remove(follow);
                 await _context.SaveChangesAsync();
+
+                var notif = await _context.Notifications.FirstOrDefaultAsync(n => n.SenderId == followerId && n.RecipientId == currentUser.Id && n.Type == "Request");
+                if (notif != null) { _context.Notifications.Remove(notif); await _context.SaveChangesAsync(); }
             }
             return RedirectToAction("Show", new { id = currentUser.Id });
         }
 
-        // Upload Photo
         [HttpPost]
         [Authorize]
         public async Task<IActionResult> UpdateProfilePicture(IFormFile profilePicture)
@@ -223,7 +235,6 @@ namespace Pinly.Controllers
             return RedirectToAction("Show", new { id = _userManager.GetUserId(User) });
         }
 
-        // --- METODA NOUA: STERGE USER (Doar Admin) ---
         [HttpPost]
         [Authorize(Roles = "Admin")]
         [ValidateAntiForgeryToken]
@@ -232,11 +243,6 @@ namespace Pinly.Controllers
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null) return NotFound();
 
-            // Nu se poate sterge adminul pe el insusi de aici (optional safety)
-            // if (user.UserName == User.Identity.Name) return BadRequest("Nu te poti sterge singur de aici.");
-
-            // 1. Stergem dependintele manual daca e nevoie (desi Cascade Delete ar trebui sa se ocupe de majoritatea)
-            // Totusi, e mai safe sa curatam explicit imaginile de pe disc
             var pins = await _context.Pins.Where(p => p.ApplicationUserId == userId).ToListAsync();
             foreach (var pin in pins)
             {
@@ -247,15 +253,20 @@ namespace Pinly.Controllers
                 }
             }
 
-            // Stergem userul (Identity se ocupa de stergerea din DB a relatiilor datorita Cascade)
             var result = await _userManager.DeleteAsync(user);
-
-            if (result.Succeeded)
-            {
-                return RedirectToAction("Index", "Home");
-            }
-
+            if (result.Succeeded) return RedirectToAction("Index", "Home");
             return RedirectToAction("Show", new { id = userId });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> SearchUsers(string term)
+        {
+            if (string.IsNullOrWhiteSpace(term)) return Json(new List<object>());
+            var users = await _context.Users
+                .Where(u => u.UserName.Contains(term))
+                .Select(u => new { id = u.Id, username = u.UserName, avatar = u.ProfilePicturePath })
+                .Take(5).ToListAsync();
+            return Json(users);
         }
     }
 }

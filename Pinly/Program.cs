@@ -44,5 +44,11 @@ app.Run(); using (var scope = app.Services.CreateScope())
     SeedData.Initialize(services);
 }
 
+builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
+{
+    options.User.RequireUniqueEmail = true;
+})
+.AddEntityFrameworkStores<AppDbContext>();
+
 
 app.Run();

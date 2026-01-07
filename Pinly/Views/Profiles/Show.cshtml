@@ -8,6 +8,9 @@
 
     // Verificam daca e blocat pentru vizitator (Privat + Nu urmareste + Nu e admin + Nu e owner)
     bool isLocked = Model.User.IsPrivate && !Model.IsFollowing && !Model.IsOwner && !isAdmin;
+
+    // Verificam daca utilizatorul curent este logat
+    bool isAuthenticated = User.Identity.IsAuthenticated;
 }
 
 <style>
@@ -88,7 +91,17 @@
             color: white;
         }
 
-    /* Stil Buton Stergere Admin */
+    /* Stil pentru Badge-ul de notificari */
+    .badge-notification {
+        background-color: #E60023;
+        color: white;
+        border-radius: 50%;
+        padding: 4px 8px;
+        font-size: 0.75rem;
+        vertical-align: top;
+        margin-left: 5px;
+    }
+
     .admin-delete-btn {
         position: absolute;
         top: 0;
@@ -177,21 +190,30 @@
             {
                 @if (!isAdmin)
                 {
-                    <form asp-action="ToggleFollow" asp-controller="Profiles" method="post">
-                        <input type="hidden" name="userId" value="@Model.User.Id" />
-                        @if (Model.IsFollowing)
-                        {
-                            <button type="submit" class="btn btn-dark rounded-pill px-4 fw-bold">Unfollow</button>
-                        }
-                        else if (Model.HasPendingRequest)
-                        {
-                            <button type="submit" class="btn btn-secondary rounded-pill px-4 fw-bold">Cerere Trimisă</button>
-                        }
-                        else
-                        {
-                            <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold">Follow</button>
-                        }
-                    </form>
+                    /* --- REPARARE CRASH: Verificam daca e logat --- */
+                    if (isAuthenticated)
+                    {
+                        <form asp-action="ToggleFollow" asp-controller="Profiles" method="post">
+                            <input type="hidden" name="userId" value="@Model.User.Id" />
+                            @if (Model.IsFollowing)
+                            {
+                                <button type="submit" class="btn btn-dark rounded-pill px-4 fw-bold">Unfollow</button>
+                            }
+                            else if (Model.HasPendingRequest)
+                            {
+                                <button type="submit" class="btn btn-secondary rounded-pill px-4 fw-bold">Cerere Trimisă</button>
+                            }
+                            else
+                            {
+                                <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold">Follow</button>
+                            }
+                        </form>
+                    }
+                    else
+                    {
+                        /* Daca NU e logat, il trimitem la Login cu ReturnUrl catre Profil (nu catre actiunea ToggleFollow) */
+                        <a asp-area="Identity" asp-page="/Account/Login" asp-route-returnUrl="@Context.Request.Path" class="btn btn-danger rounded-pill px-4 fw-bold">Follow</a>
+                    }
                 }
             }
         </div>
@@ -223,8 +245,9 @@
             @if (Model.IsOwner && Model.PendingRequests.Any())
             {
                 <li class="nav-item">
-                    <button class="nav-link text-danger" id="pills-requests-tab" data-bs-toggle="pill" data-bs-target="#pills-requests" type="button">
-                        Cereri (@Model.PendingRequests.Count)
+                    <button class="nav-link text-danger fw-bold" id="pills-requests-tab" data-bs-toggle="pill" data-bs-target="#pills-requests" type="button">
+                        Cereri
+                        <span class="badge-notification">@Model.PendingRequests.Count</span>
                     </button>
                 </li>
             }
@@ -299,7 +322,11 @@
                                                     <div class="d-flex justify-content-center align-items-center h-100 fw-bold fs-5">@reqUser.UserName.Substring(0, 1).ToUpper()</div>
                                                 }
                                             </div>
-                                            <span class="fw-bold fs-5">@reqUser.UserName</span>
+
+                                            <div class="d-flex flex-column">
+                                                <span class="fw-bold fs-5">@reqUser.UserName</span>
+                                                <span class="text-muted small">vrea să te urmărească</span>
+                                            </div>
                                         </div>
                                         <div>
                                             <form asp-action="AcceptRequest" asp-controller="Profiles" class="d-inline">
