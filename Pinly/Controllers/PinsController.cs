@@ -14,7 +14,9 @@ namespace Pinly.Controllers
         private readonly IWebHostEnvironment _webHostEnvironment;
         private readonly UserManager<ApplicationUser> _userManager;
 
-        public PinsController(AppDbContext context, IWebHostEnvironment webHostEnvironment, UserManager<ApplicationUser> userManager)
+        public PinsController(AppDbContext context,
+                              IWebHostEnvironment webHostEnvironment,
+                              UserManager<ApplicationUser> userManager)
         {
             _context = context;
             _webHostEnvironment = webHostEnvironment;
@@ -22,10 +24,16 @@ namespace Pinly.Controllers
         }
 
         [HttpGet]
-        public IActionResult Create() { return View(); }
+        public IActionResult Create()
+        {
+            return View();
+        }
 
+        // crestere limita
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [RequestSizeLimit(524288000)] // 500 MB in bytes
+        [RequestFormLimits(MultipartBodyLengthLimit = 524288000)]
         public async Task<IActionResult> Create(PinCreateViewModel model)
         {
             if (ModelState.IsValid)
@@ -37,11 +45,23 @@ namespace Pinly.Controllers
                     if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
                     uniqueFileName = Guid.NewGuid().ToString() + "_" + model.Image.FileName;
                     string filePath = Path.Combine(uploadsFolder, uniqueFileName);
-                    using (var fileStream = new FileStream(filePath, FileMode.Create)) { await model.Image.CopyToAsync(fileStream); }
+
+                    // Folosim stream pentru a salva fisierul
+                    using (var fileStream = new FileStream(filePath, FileMode.Create))
+                    {
+                        await model.Image.CopyToAsync(fileStream);
+                    }
                 }
 
                 var user = await _userManager.GetUserAsync(User);
-                var pin = new Pin { Title = model.Title, Description = model.Description, MediaPath = "/images/pins/" + uniqueFileName, CreatedDate = DateTime.Now, ApplicationUserId = user.Id };
+                var pin = new Pin
+                {
+                    Title = model.Title,
+                    Description = model.Description,
+                    MediaPath = "/images/pins/" + uniqueFileName,
+                    CreatedDate = DateTime.Now,
+                    ApplicationUserId = user.Id
+                };
                 _context.Pins.Add(pin);
                 await _context.SaveChangesAsync();
                 return RedirectToAction("Index", "Home");
@@ -56,9 +76,12 @@ namespace Pinly.Controllers
             var pin = await _context.Pins
                 .Include(p => p.ApplicationUser)
                 .Include(p => p.Reactions)
-                .Include(p => p.Comments).ThenInclude(c => c.ApplicationUser)
-                .Include(p => p.Comments).ThenInclude(c => c.Likes)
+                .Include(p => p.Comments)
+                    .ThenInclude(c => c.ApplicationUser)
+                .Include(p => p.Comments)
+                    .ThenInclude(c => c.Likes)
                 .FirstOrDefaultAsync(m => m.Id == id);
+
             if (pin == null) return NotFound();
             return View(pin);
         }
@@ -70,11 +93,16 @@ namespace Pinly.Controllers
         {
             if (string.IsNullOrWhiteSpace(content)) return RedirectToAction("Show", new { id = pinId });
             var user = await _userManager.GetUserAsync(User);
-            var comment = new Comment { PinId = pinId, Content = content, CreatedDate = DateTime.Now, ApplicationUserId = user.Id };
+            var comment = new Comment
+            {
+                PinId = pinId,
+                Content = content,
+                CreatedDate = DateTime.Now,
+                ApplicationUserId = user.Id
+            };
             _context.Comments.Add(comment);
 
-            // --- NOTIFICARE COMENTARIU (OPTIONAL) ---
-            // Daca vrei notificare cand cineva iti comenteaza la pin:
+            // Notificare Comentariu
             var pin = await _context.Pins.FindAsync(pinId);
             if (pin != null && pin.ApplicationUserId != user.Id)
             {
@@ -139,7 +167,11 @@ namespace Pinly.Controllers
             if (comment == null) return NotFound();
             var user = await _userManager.GetUserAsync(User);
             if (comment.ApplicationUserId != user.Id) return Forbid();
-            if (!string.IsNullOrWhiteSpace(newContent)) { comment.Content = newContent; await _context.SaveChangesAsync(); }
+            if (!string.IsNullOrWhiteSpace(newContent))
+            {
+                comment.Content = newContent;
+                await _context.SaveChangesAsync();
+            }
             return RedirectToAction("Show", new { id = comment.PinId });
         }
 
@@ -153,22 +185,15 @@ namespace Pinly.Controllers
             if (pin == null) return NotFound();
 
             var reaction = await _context.Reactions.FirstOrDefaultAsync(r => r.PinId == pinId && r.ApplicationUserId == user.Id);
-
             if (reaction != null)
             {
-                // UNLIKE
                 _context.Reactions.Remove(reaction);
-
-                // Sterge notificarea existenta
                 var oldNotif = await _context.Notifications.FirstOrDefaultAsync(n => n.Type == "Like" && n.SenderId == user.Id && n.PinId == pinId);
                 if (oldNotif != null) _context.Notifications.Remove(oldNotif);
             }
             else
             {
-                // LIKE
                 _context.Reactions.Add(new Reaction { PinId = pinId, ApplicationUserId = user.Id });
-
-                // Adauga notificare (daca nu e proprietarul)
                 if (pin.ApplicationUserId != user.Id)
                 {
                     _context.Notifications.Add(new Notification
@@ -196,31 +221,25 @@ namespace Pinly.Controllers
             var comment = await _context.Comments.FindAsync(commentId);
             if (comment == null) return NotFound();
 
-            var like = await _context.CommentLikes.FirstOrDefaultAsync(cl => cl.CommentId == commentId && cl.ApplicationUserId == user.Id);
+            var like = await _context.CommentLikes
+                .FirstOrDefaultAsync(cl => cl.CommentId == commentId && cl.ApplicationUserId == user.Id);
 
             if (like != null)
             {
-                // UNLIKE COMENTARIU
                 _context.CommentLikes.Remove(like);
-
-                // Sterge notificarea
-                var oldNotif = await _context.Notifications
-                    .FirstOrDefaultAsync(n => n.Type == "CommentLike" && n.SenderId == user.Id && n.RecipientId == comment.ApplicationUserId && n.PinId == comment.PinId);
+                var oldNotif = await _context.Notifications.FirstOrDefaultAsync(n => n.Type == "CommentLike" && n.SenderId == user.Id && n.RecipientId == comment.ApplicationUserId && n.PinId == comment.PinId);
                 if (oldNotif != null) _context.Notifications.Remove(oldNotif);
             }
             else
             {
-                // LIKE COMENTARIU
                 _context.CommentLikes.Add(new CommentLike { CommentId = commentId, ApplicationUserId = user.Id });
-
-                // Adauga notificare (daca nu e proprietarul comentariului)
                 if (comment.ApplicationUserId != user.Id)
                 {
                     _context.Notifications.Add(new Notification
                     {
                         SenderId = user.Id,
-                        RecipientId = comment.ApplicationUserId, // Notificam autorul comentariului
-                        PinId = comment.PinId, // Legam de Pin ca sa mearga link-ul
+                        RecipientId = comment.ApplicationUserId,
+                        PinId = comment.PinId,
                         Type = "CommentLike",
                         Text = "a apreciat comentariul tau.",
                         CreatedDate = DateTime.Now
@@ -234,7 +253,9 @@ namespace Pinly.Controllers
         [HttpGet]
         public async Task<IActionResult> Likers(int id)
         {
-            var pin = await _context.Pins.Include(p => p.Reactions).ThenInclude(r => r.ApplicationUser).FirstOrDefaultAsync(p => p.Id == id);
+            var pin = await _context.Pins
+                .Include(p => p.Reactions).ThenInclude(r => r.ApplicationUser)
+                .FirstOrDefaultAsync(p => p.Id == id);
             if (pin == null) return NotFound();
             return View(pin);
         }

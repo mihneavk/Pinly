@@ -73,7 +73,19 @@ else
             {
                 <div class="card masonry-item border-0 shadow-sm pin-card">
                     <a asp-controller="Pins" asp-action="Show" asp-route-id="@pin.Id" class="text-decoration-none text-dark">
-                        <img src="@pin.MediaPath" class="card-img-top rounded-3" style="width: 100%; display: block;">
+                        @{
+                            var ext = System.IO.Path.GetExtension(pin.MediaPath)?.ToLower();
+                            bool isVideo = ext == ".mp4" || ext == ".webm" || ext == ".mov" || ext == ".ogg";
+                        }
+
+                        @if (isVideo)
+                        {
+                            <video src="@pin.MediaPath" class="card-img-top rounded-3" style="width: 100%; display: block;" autoplay muted loop playsinline></video>
+                        }
+                        else
+                        {
+                            <img src="@pin.MediaPath" class="card-img-top rounded-3" style="width: 100%; display: block;">
+                        }
                     </a>
 
                     <div class="card-body p-3">
