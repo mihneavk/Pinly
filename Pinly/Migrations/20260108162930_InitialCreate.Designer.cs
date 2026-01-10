@@ -12,8 +12,8 @@ using Pinly.Models;
 namespace Pinly.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260107145809_AddNotifications")]
-    partial class AddNotifications
+    [Migration("20260108162930_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

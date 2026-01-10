@@ -4,20 +4,20 @@ namespace Pinly.Models
 {
     public class GroupMessage
     {
-        [Key]
         public int Id { get; set; }
 
-        [Required(ErrorMessage = "Conținutul mesajului nu poate fi gol")]
+        [Required]
         public string Content { get; set; }
 
-        public DateTime CreatedDate { get; set; }
+        public DateTime CreatedDate { get; set; } = DateTime.Now;
 
-        // Relația 1:N cu Group
-        public int GroupId { get; set; } // FK
-        public virtual Group? Group { get; set; }
+        public bool IsEdited { get; set; } = false;
+        public bool IsDeleted { get; set; } = false;
 
-        // Relația 1:N cu ApplicationUser (Autorul mesajului)
-        public string ApplicationUserId { get; set; } // FK
-        public virtual ApplicationUser? ApplicationUser { get; set; }
+        public string SenderId { get; set; }
+        public virtual ApplicationUser Sender { get; set; }
+
+        public int GroupId { get; set; }
+        public virtual Group Group { get; set; }
     }
 }

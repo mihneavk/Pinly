@@ -186,30 +186,40 @@
             {
                 @if (!isAdmin)
                 {
-                    if (isAuthenticated)
-                    {
-                        <form asp-action="ToggleFollow" asp-controller="Profiles" method="post">
-                            <input type="hidden" name="userId" value="@Model.User.Id" />
-                            @if (Model.IsFollowing)
-                            {
-                                <button type="submit" class="btn btn-dark rounded-pill px-4 fw-bold">Unfollow</button>
-                            }
-                            else if (Model.HasPendingRequest)
-                            {
+                    <div class="d-flex justify-content-center gap-2">
+                        @if (isAuthenticated)
+                        {
+                            <form asp-controller="Chat" asp-action="CreatePrivateChat" method="post">
+                                <input type="hidden" name="targetUserId" value="@Model.User.Id" />
+                                <button type="submit" class="btn btn-outline-dark rounded-pill px-4 fw-bold">Mesaj</button>
+                            </form>
+                        }
 
-                                <button type="submit" class="btn btn-secondary rounded-pill px-4 fw-bold">Cerere Trimisă</button>
-                            }
-                            else
-                            {
+                        @if (isAuthenticated)
+                        {
+                            <form asp-action="ToggleFollow" asp-controller="Profiles" method="post">
+                                <input type="hidden" name="userId" value="@Model.User.Id" />
+                                @if (Model.IsFollowing)
+                                {
+                                    <button type="submit" class="btn btn-dark rounded-pill px-4 fw-bold">Unfollow</button>
+                                }
+                                else if (Model.HasPendingRequest)
+                                {
 
-                                <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold">Follow</button>
-                            }
-                        </form>
-                    }
-                    else
-                    {
-                        <a asp-area="Identity" asp-page="/Account/Login" asp-route-returnUrl="@Context.Request.Path" class="btn btn-danger rounded-pill px-4 fw-bold">Follow</a>
-                    }
+                                    <button type="submit" class="btn btn-secondary rounded-pill px-4 fw-bold">Cerere Trimisă</button>
+                                }
+                                else
+                                {
+
+                                    <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold">Follow</button>
+                                }
+                            </form>
+                        }
+                        else
+                        {
+                            <a asp-area="Identity" asp-page="/Account/Login" asp-route-returnUrl="@Context.Request.Path" class="btn btn-danger rounded-pill px-4 fw-bold">Follow</a>
+                        }
+                    </div>
                 }
             }
         </div>
@@ -257,7 +267,7 @@
                                     }
                                     @if (isVideo)
                                     {
-                                        <video src="@pin.MediaPath" class="card-img-top rounded-3" style="width: 100%; display: block;" autoplay muted loop playsinline></video>
+                                        <video src="@pin.MediaPath" class="card-img-top rounded-3" style="width: 100%; display: block;" muted loop playsinline onmouseover="this.play()" onmouseout="this.pause();"></video>
                                     }
                                     else
                                     {

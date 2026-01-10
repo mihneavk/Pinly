@@ -1,0 +1,508 @@
+﻿@model Pinly.ViewModels.ChatViewModel
+@{
+    ViewData["Title"] = "Mesaje";
+    var currentUser = Model.CurrentUserId;
+    bool isPendingView = ViewBag.IsPending == true;
+}
+
+<style>
+    .chat-container {
+        height: calc(100vh - 150px);
+        min-height: 500px;
+        display: flex;
+        border: 1px solid #ddd;
+        border-radius: 16px;
+        overflow: hidden;
+        background: white;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+    }
+
+    .chat-sidebar {
+        width: 320px;
+        border-right: 1px solid #f0f0f0;
+        background: #fcfcfc;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .chat-main {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        background: #fff;
+        position: relative;
+    }
+
+    .chat-list {
+        overflow-y: auto;
+        flex-grow: 1;
+    }
+
+    .chat-item {
+        padding: 15px 20px;
+        border-bottom: 1px solid #f5f5f5;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+        .chat-item:hover {
+            background: #f2f4f6;
+        }
+
+        .chat-item.active {
+            background: #fff0f0;
+            border-left: 4px solid #E60023;
+        }
+
+    .messages-area {
+        flex-grow: 1;
+        padding: 25px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        background: #fff;
+        scroll-behavior: smooth;
+    }
+
+    .message-bubble {
+        max-width: 75%;
+        padding: 12px 18px;
+        border-radius: 20px;
+        position: relative;
+        font-size: 0.95rem;
+        line-height: 1.5;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+    }
+
+    .msg-sent {
+        align-self: flex-end;
+        background: #E60023;
+        color: white;
+        border-bottom-right-radius: 4px;
+    }
+
+    .msg-received {
+        align-self: flex-start;
+        background: #f2f2f7;
+        color: #333;
+        border-bottom-left-radius: 4px;
+    }
+
+    .msg-meta {
+        font-size: 0.7rem;
+        margin-top: 6px;
+        opacity: 0.8;
+        text-align: right;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+    }
+
+    #suggestionsBox {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        width: 100%;
+        background-color: white;
+        border: 1px solid #eee;
+        border-radius: 12px;
+        z-index: 9999;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+        display: none;
+        max-height: 250px;
+        overflow-y: auto;
+        margin-top: 5px;
+    }
+
+        #suggestionsBox .list-group-item {
+            cursor: pointer;
+            border: none;
+            padding: 12px 15px;
+            border-bottom: 1px solid #f9f9f9;
+        }
+
+            #suggestionsBox .list-group-item:hover {
+                background-color: #f8f9fa;
+            }
+
+    .chat-action-btn {
+        opacity: 0.6;
+        transition: 0.2s;
+        color: inherit;
+        cursor: pointer;
+        padding: 0 5px;
+    }
+
+        .chat-action-btn:hover {
+            opacity: 1;
+        }
+
+    .modern-chat-menu {
+        border: none !important;
+        border-radius: 16px !important;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.15) !important;
+        padding: 8px !important;
+        min-width: 160px !important;
+        margin-top: 5px !important;
+        animation: menu-fade-in 0.2s ease-out;
+    }
+
+    @@keyframes menu-fade-in {
+        from {
+            opacity: 0;
+            transform: translateY(-10px) scale(0.95);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    .modern-chat-menu .dropdown-item {
+        border-radius: 10px;
+        font-size: 0.9rem;
+        padding: 10px 15px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        transition: all 0.1s;
+        color: #444;
+    }
+
+        .modern-chat-menu .dropdown-item:hover {
+            background-color: #f7f9fc;
+            transform: translateX(3px);
+        }
+
+        .modern-chat-menu .dropdown-item.text-danger {
+            color: #dc3545;
+        }
+
+            .modern-chat-menu .dropdown-item.text-danger:hover {
+                background-color: #fff5f5;
+                color: #e02d3f;
+            }
+
+    .z-index-fix {
+        z-index: 1000 !important;
+        position: relative !important;
+    }
+
+    .pending-group {
+        opacity: 0.7;
+        background: #fffbf0;
+    }
+
+    .nav-tabs .nav-link {
+        color: #555;
+        border-radius: 20px;
+    }
+
+        .nav-tabs .nav-link.active {
+            color: #E60023;
+            font-weight: bold;
+        }
+</style>
+
+<div class="container mt-4 mb-5">
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show rounded-pill px-4 shadow-sm" role="alert"><i class="bi bi-exclamation-circle-fill me-2"></i> @TempData["Error"]<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+    }
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show rounded-pill px-4 shadow-sm" role="alert"><i class="bi bi-check-circle-fill me-2"></i> @TempData["Success"]<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+    }
+
+    <div class="chat-container">
+        <div class="chat-sidebar">
+            <div class="p-3 border-bottom d-flex justify-content-between align-items-center bg-white">
+                <h5 class="fw-bold mb-0 text-dark">Conversații</h5>
+                <div class="d-flex gap-1">
+                    <a class="btn btn-sm btn-outline-dark rounded-circle shadow-sm" asp-action="PublicGroups" title="Grupuri Publice" style="width: 32px; height: 32px;"><i class="bi bi-globe"></i></a>
+                    <button class="btn btn-sm btn-light text-danger rounded-circle border shadow-sm" data-bs-toggle="modal" data-bs-target="#createGroupModal" style="width: 32px; height: 32px;"><i class="bi bi-plus-lg"></i></button>
+                </div>
+            </div>
+            <div class="chat-list">
+                @foreach (var group in Model.MyGroups)
+                {
+                    var mem = group.Memberships.FirstOrDefault(m => m.ApplicationUserId == currentUser);
+                    bool pending = mem != null && !mem.IsAccepted;
+                    string displayName = group.Name;
+                    string avatar = null;
+                    if (group.IsPrivate) { var u = group.Memberships.FirstOrDefault(m => m.ApplicationUserId != currentUser)?.ApplicationUser; if (u != null) { displayName = u.UserName; avatar = u.ProfilePicturePath; } }
+
+                    <a href="@Url.Action("Index", new { groupId = group.Id })" class="text-decoration-none text-dark">
+                        <div class="chat-item d-flex align-items-center @(Model.CurrentGroupId == group.Id ? "active" : "") @(pending ? "pending-group" : "")">
+                            <div class="rounded-circle me-3 bg-secondary text-white d-flex align-items-center justify-content-center overflow-hidden flex-shrink-0" style="width: 45px; height: 45px;">
+                                @if (avatar != null)
+                                {
+                                    <img src="@avatar" style="width:100%; height:100%; object-fit:cover;">
+                                }
+                                else
+                                {
+
+                                    <span class="fw-bold">@displayName.Substring(0, 1).ToUpper()</span>
+                                }
+                            </div>
+                            <div style="min-width:0;">
+                                <div class="fw-bold text-truncate" style="font-size: 0.95rem;">@displayName @if(pending){
+                                <i class="bi bi-clock-history text-warning small ms-1"></i>
+                            }
+</div>
+                            <div class="small text-muted text-truncate" style="opacity: 0.8;">@(group.Messages.OrderByDescending(m => m.CreatedDate).FirstOrDefault()?.Content ?? "Niciun mesaj")</div>
+                        </div>
+                    </div>
+                </a>
+                                }
+            </div>
+        </div>
+
+        <div class="chat-main">
+            @if (Model.CurrentGroup != null)
+            {
+                if (isPendingView)
+                {
+                    <div class="d-flex align-items-center justify-content-center h-100 flex-column bg-light p-4 text-center">
+                        <i class="bi bi-shield-lock display-1 text-warning mb-3"></i>
+                        <h3>Cerere în așteptare</h3>
+                        <p class="text-muted">Ai cerut să intri în grupul <strong>@Model.CurrentGroup.Name</strong>.<br>Un administrator trebuie să îți aprobe cererea.</p>
+                        <a asp-action="Index" class="btn btn-outline-dark rounded-pill mt-3">Înapoi</a>
+                    </div>
+                }
+                else
+                {
+                    var myMembership = Model.CurrentGroup.Memberships.FirstOrDefault(m => m.ApplicationUserId == currentUser);
+                    bool iAmAdmin = Model.CurrentGroup.ModeratorId == currentUser;
+                    bool iAmMod = myMembership != null && myMembership.IsModerator;
+                    bool isBlocked = Model.CurrentGroup.IsPrivate && Model.CurrentGroup.Memberships.Any(m => m.IsBlocked);
+                    bool iBlocked = myMembership != null && myMembership.IsBlocked;
+
+                    <div class="p-3 border-bottom bg-white d-flex justify-content-between align-items-center shadow-sm" style="z-index: 10;">
+                        <div class="d-flex align-items-center">
+                            <h6 class="mb-0 fw-bold fs-5">@Model.CurrentGroup.Name @if(Model.CurrentGroup.IsPublic){
+                            <span class="badge bg-info text-dark ms-2 rounded-pill" style="font-size:0.6rem">PUBLIC</span>
+                        }
+    </h6>
+                        @if (isBlocked)
+                        {
+                            <span class="badge bg-danger ms-2">Blocat</span>
+                        }
+                    </div>
+                    <div class="d-flex gap-2">
+                        @if (!Model.CurrentGroup.IsPrivate)
+                        {
+                            <button class="btn btn-sm btn-light border rounded-pill px-3 fw-bold" data-bs-toggle="modal" data-bs-target="#membersModal">
+                                <i class="bi bi-people-fill me-1"></i> Membri
+                                @if ((iAmAdmin || iAmMod) && Model.CurrentGroup.Memberships.Any(m => !m.IsAccepted))
+                                {
+                                    <span class="badge bg-danger rounded-pill ms-1">!</span>
+                                }
+                            </button>
+
+                            @if ((iAmAdmin || iAmMod) && !Model.CurrentGroup.IsPublic)
+                            {
+                                <button class="btn btn-sm btn-dark rounded-pill px-3 fw-bold" data-bs-toggle="modal" data-bs-target="#addMemberModal"><i class="bi bi-person-plus-fill me-1"></i> Adaugă</button>
+                            }
+                        }
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-light rounded-circle border shadow-sm" data-bs-toggle="dropdown"><i class="bi bi-three-dots-vertical"></i></button>
+                            <ul class="dropdown-menu dropdown-menu-end modern-chat-menu">
+                                @if (!Model.CurrentGroup.IsPrivate)
+                                {
+                                    <li><form asp-action="LeaveGroup" method="post"><input type="hidden" name="groupId" value="@Model.CurrentGroup.Id" /><button class="dropdown-item text-danger" onclick="return confirm('Părăsești grupul?')"><i class="bi bi-box-arrow-right"></i> Părăsește Grupul</button></form></li>
+                                }
+                                else
+                                {
+                                    <li><form asp-action="ToggleBlock" method="post"><input type="hidden" name="groupId" value="@Model.CurrentGroup.Id" /><button class="dropdown-item @(iBlocked ? "text-success" : "text-danger")">@(iBlocked ? "Deblochează" : "Blochează")</button></form></li>
+                                }
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="messages-area" id="msgArea">
+                    @foreach (var msg in Model.Messages)
+                    {
+                        bool isMe = msg.SenderId == Model.CurrentUserId;
+                        <div class="chat-message-row d-flex flex-column @(isMe ? "align-items-end" : "align-items-start")" style="position: relative;">
+                            <div class="message-bubble @(isMe ? "msg-sent" : "msg-received") @(msg.IsDeleted ? "fst-italic bg-light text-muted border" : "")" style="min-width: 140px;">
+                                @if (!isMe && !Model.CurrentGroup.IsPrivate)
+                                {
+                                    <div class="fw-bold small mb-1 text-secondary">@msg.Sender.UserName</div>
+                                }
+                                <div id="msg-content-@msg.Id">@msg.Content</div>
+                                @if (isMe && !msg.IsDeleted)
+                                {
+                                    <div id="msg-edit-form-@msg.Id" style="display:none;" class="mt-2"><form asp-action="EditMessage" method="post" class="d-flex gap-2 bg-white p-1 rounded-3 shadow-sm"><input type="hidden" name="messageId" value="@msg.Id" /><input type="text" name="newContent" value="@msg.Content" class="form-control form-control-sm border-0" required /><button type="submit" class="btn btn-sm btn-success rounded-circle"><i class="bi bi-check"></i></button><button type="button" class="btn btn-sm btn-secondary rounded-circle" onclick="toggleEditChat('@msg.Id')"><i class="bi bi-x"></i></button></form></div>
+                                }
+                                <div class="msg-meta">
+                                    @if (msg.IsEdited && !msg.IsDeleted)
+                                    {
+                                        <span class="fst-italic small" style="opacity:0.7;">(editat)</span>
+                                    }
+                                    <span>@msg.CreatedDate.ToString("dd.MM HH:mm")</span>
+                                    @if (isMe && !msg.IsDeleted)
+                                    {
+                                        <div class="dropdown"><a href="#" class="chat-action-btn text-white" data-bs-toggle="dropdown" data-bs-boundary="viewport"><i class="bi bi-chevron-down" style="font-size: 0.7rem; background: rgba(0,0,0,0.2); padding: 3px; border-radius: 50%;"></i></a><ul class="dropdown-menu dropdown-menu-end modern-chat-menu"><li><a class="dropdown-item" href="#" onclick="toggleEditChat('@msg.Id'); return false;"><i class="bi bi-pencil-square text-primary"></i> Editează</a></li><li><hr class="dropdown-divider my-1"></li><li><form asp-action="DeleteMessage" method="post"><input type="hidden" name="messageId" value="@msg.Id" /><button type="submit" class="dropdown-item text-danger" onclick="return confirm('Stergi?')"><i class="bi bi-trash-fill"></i> Șterge</button></form></li></ul></div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <div class="p-3 border-top bg-white">
+                    @if (isBlocked)
+                    {
+                        <div class="text-center text-danger fw-bold py-2"><i class="bi bi-slash-circle-fill me-2"></i> Blocat.</div>
+                    }
+                    else
+                    {
+                        <form asp-action="SendMessage" method="post" class="d-flex gap-2" autocomplete="off"><input type="hidden" name="groupId" value="@Model.CurrentGroup.Id" /><input type="text" name="content" class="form-control rounded-pill bg-light border-0 px-4" placeholder="Scrie..." required><button class="btn btn-danger rounded-circle"><i class="bi bi-send-fill"></i></button></form>
+                    }
+                </div>
+            }
+                        }
+                        else
+            {
+                <div class="d-flex align-items-center justify-content-center h-100 text-muted flex-column bg-light"><div class="p-4 rounded-circle bg-white shadow-sm mb-3"><i class="bi bi-chat-text display-4 text-danger opacity-50"></i></div><h4>Mesaje Pinly</h4><p>Selectează un grup sau <a asp-action="PublicGroups">caută grupuri publice</a>.</p></div>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="createGroupModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow">
+            <div class="modal-header border-0"><h5 class="modal-title fw-bold">Creează Grup Nou</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <form asp-action="CreateGroup" method="post">
+                    <div class="mb-3"><label class="form-label small fw-bold text-muted">Nume</label><input type="text" name="groupName" class="form-control rounded-3 bg-light border-0" required></div>
+                    <div class="mb-3"><label class="form-label small fw-bold text-muted">Descriere</label><textarea name="description" class="form-control rounded-3 bg-light border-0" rows="2"></textarea></div>
+                    <div class="form-check form-switch mb-3 ms-2"><input class="form-check-input" type="checkbox" id="isPublicCheck" name="isPublic" value="true"><label class="form-check-label" for="isPublicCheck">Grup Public</label></div>
+                    <button type="submit" class="btn btn-danger w-100 rounded-pill fw-bold py-2">Creează</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="addMemberModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow" style="overflow:visible;"><div class="modal-header border-0"><h5 class="modal-title fw-bold">Adaugă Membru</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" style="overflow:visible;"><form asp-action="AddMember" method="post" autocomplete="off"><input type="hidden" name="groupId" value="@Model.CurrentGroup?.Id" /><div class="mb-3 position-relative"><input type="text" id="memberSearchInput" name="username" class="form-control rounded-3 p-3 bg-light border-0" placeholder="Caută..." required><div id="suggestionsBox" class="list-group position-absolute w-100 shadow-lg mt-1"></div></div><button type="submit" class="btn btn-dark w-100 rounded-pill fw-bold py-2">Adaugă</button></form></div></div>
+    </div>
+</div>
+
+@if (Model.CurrentGroup != null && !Model.CurrentGroup.IsPrivate && !isPendingView)
+{
+    var myMembership = Model.CurrentGroup.Memberships.FirstOrDefault(m => m.ApplicationUserId == currentUser);
+    bool iAmAdmin = Model.CurrentGroup.ModeratorId == currentUser;
+    bool iAmMod = myMembership != null && myMembership.IsModerator;
+    var pendingUsers = Model.CurrentGroup.Memberships.Where(m => !m.IsAccepted).ToList();
+    var activeUsers = Model.CurrentGroup.Memberships.Where(m => m.IsAccepted).ToList();
+
+    <div class="modal fade" id="membersModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content border-0 rounded-4 shadow">
+                <div class="modal-header border-0">
+                    <ul class="nav nav-tabs border-0" id="membersTab" role="tablist">
+                        <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#active-members">Membri (@activeUsers.Count)</button></li>
+                        @if (iAmAdmin || iAmMod)
+                        {
+                            <li class="nav-item"><button class="nav-link text-danger" data-bs-toggle="tab" data-bs-target="#pending-requests">Cereri (@pendingUsers.Count)</button></li>
+                        }
+                    </ul>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="tab-content">
+                        <div class="tab-pane fade show active" id="active-members">
+                            <ul class="list-group list-group-flush">
+                                @foreach (var member in activeUsers.OrderByDescending(m => m.ApplicationUserId == Model.CurrentGroup.ModeratorId))
+                                {
+                                    <li class="list-group-item d-flex justify-content-between align-items-center p-3">
+                                        <div class="d-flex align-items-center"><div class="rounded-circle bg-secondary text-white d-flex justify-content-center align-items-center me-2" style="width:35px;height:35px;">@member.ApplicationUser.UserName.Substring(0, 1).ToUpper()</div><span>@member.ApplicationUser.UserName @if(member.ApplicationUserId==Model.CurrentGroup.ModeratorId){
+                                        <span class="badge bg-danger ms-1">Admin</span>
+                                    } else if (member.IsModerator)
+                                    {
+
+                                        <span class="badge bg-dark ms-1">Mod</span>
+                                    }
+    </span></div>
+                                    @if (iAmAdmin && member.ApplicationUserId != currentUser)
+                                    {
+                                        <form asp-action="RemoveMember" method="post"><input type="hidden" name="groupId" value="@Model.CurrentGroup.Id" /><input type="hidden" name="userIdToRemove" value="@member.ApplicationUserId" /><button class="btn btn-sm btn-outline-danger rounded-circle"><i class="bi bi-x"></i></button></form>
+                                    }
+                                    @if (iAmAdmin && member.ApplicationUserId != currentUser)
+                                    {
+                                        <form asp-action="ToggleModerator" method="post" class="ms-1"><input type="hidden" name="groupId" value="@Model.CurrentGroup.Id" /><input type="hidden" name="userIdToToggle" value="@member.ApplicationUserId" /><button class="btn btn-sm btn-outline-secondary rounded-circle"><i class="bi @(member.IsModerator ? "bi-arrow-down" : "bi-arrow-up")"></i></button></form>
+                                    }
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                    @if (iAmAdmin || iAmMod)
+                    {
+                        <div class="tab-pane fade" id="pending-requests">
+                            @if (!pendingUsers.Any())
+                            {
+                                <div class="p-4 text-center text-muted">Nu sunt cereri.</div>
+                            }
+                            <ul class="list-group list-group-flush">
+                                @foreach (var req in pendingUsers)
+                                {
+                                    <li class="list-group-item d-flex justify-content-between align-items-center p-3">
+                                        <div class="fw-bold">@req.ApplicationUser.UserName</div>
+                                        <div>
+                                            <form asp-action="AcceptJoin" method="post" class="d-inline"><input type="hidden" name="groupId" value="@Model.CurrentGroup.Id" /><input type="hidden" name="userIdToAccept" value="@req.ApplicationUserId" /><button class="btn btn-sm btn-success rounded-pill px-3 me-1">Acceptă</button></form>
+                                            <form asp-action="DeclineJoin" method="post" class="d-inline"><input type="hidden" name="groupId" value="@Model.CurrentGroup.Id" /><input type="hidden" name="userIdToDecline" value="@req.ApplicationUserId" /><button class="btn btn-sm btn-outline-danger rounded-pill px-3">Refuză</button></form>
+                                        </div>
+                                    </li>
+                                }
+                            </ul>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+}
+
+<script>
+    var msgArea = document.getElementById("msgArea");
+    if(msgArea) msgArea.scrollTop = msgArea.scrollHeight;
+    function toggleEditChat(id) { var c=document.getElementById('msg-content-'+id); var f=document.getElementById('msg-edit-form-'+id); if(f.style.display==='none'){f.style.display='block';c.style.display='none';}else{f.style.display='none';c.style.display='block';} }
+    document.addEventListener('show.bs.dropdown', function (e) { e.target.closest('.chat-message-row')?.classList.add('z-index-fix'); });
+    document.addEventListener('hidden.bs.dropdown', function (e) { e.target.closest('.chat-message-row')?.classList.remove('z-index-fix'); });
+    document.addEventListener("DOMContentLoaded", function() {
+        const input = document.getElementById('memberSearchInput');
+        const box = document.getElementById('suggestionsBox');
+        let timeout = null;
+        const currentGroupId = '@Model.CurrentGroup?.Id';
+        if(input && box) {
+            function performSearch(term) {
+                fetch(`/Chat/SearchUsers?term=${encodeURIComponent(term)}&groupId=${currentGroupId}`).then(r => r.json()).then(data => {
+                    box.innerHTML = '';
+                    if(data.length === 0) { if (term.length > 0) box.innerHTML = '<div class="list-group-item text-muted small p-3">Niciun rezultat.</div>'; else box.style.display = 'none'; }
+                    else { data.forEach(u => {
+                        let avatar = u.avatar ? `<img src="${u.avatar}" class="rounded-circle me-2" style="width:30px;height:30px;object-fit:cover;">` : `<div class="rounded-circle me-2 d-inline-flex align-items-center justify-content-center bg-secondary text-white fw-bold" style="width:30px;height:30px;font-size:0.8rem;">${u.username[0].toUpperCase()}</div>`;
+                        let item = document.createElement('div');
+                        item.className = 'list-group-item list-group-item-action d-flex align-items-center';
+                        item.innerHTML = `${avatar} <span class="fw-bold text-dark">${u.username}</span>`;
+                        item.onclick = function() { input.value = u.username; box.style.display = 'none'; };
+                        box.appendChild(item);
+                    }); box.style.display = 'block'; }
+                });
+            }
+            input.addEventListener('input', function() { const term = this.value; clearTimeout(timeout); timeout = setTimeout(() => { performSearch(term); }, 300); });
+            input.addEventListener('focus', function() { performSearch(this.value); });
+            document.addEventListener('click', function(e) { if(!input.contains(e.target) && !box.contains(e.target)) { box.style.display = 'none'; } });
+        }
+    });
+</script>

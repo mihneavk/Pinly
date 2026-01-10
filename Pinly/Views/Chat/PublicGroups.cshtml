@@ -1,0 +1,112 @@
+﻿@model IEnumerable<Pinly.Models.Group>
+@{
+    ViewData["Title"] = "Grupuri Publice";
+    var currentUserId = ViewBag.UserId as string;
+}
+
+<div class="container mt-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold"><i class="bi bi-globe-europe-africa me-2"></i>Grupuri Publice</h2>
+        <div class="d-flex gap-2">
+            <button class="btn btn-danger rounded-pill fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#createGroupModal">
+                <i class="bi bi-plus-lg me-1"></i> Creează Grup
+            </button>
+            <a asp-action="Index" class="btn btn-outline-dark rounded-pill fw-bold shadow-sm">Înapoi la Chat</a>
+        </div>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="text-center text-muted py-5">
+            <i class="bi bi-collection display-1 opacity-25"></i>
+            <p class="mt-3">Nu există grupuri publice momentan.</p>
+            <button class="btn btn-link text-danger fw-bold text-decoration-none" data-bs-toggle="modal" data-bs-target="#createGroupModal">Fii primul care creează unul!</button>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+            @foreach (var group in Model)
+            {
+                var membership = group.Memberships?.FirstOrDefault(m => m.ApplicationUserId == currentUserId);
+                bool isMember = membership != null && membership.IsAccepted;
+                bool isPending = membership != null && !membership.IsAccepted;
+
+                <div class="col-md-4">
+                    <div class="card border-0 shadow-sm h-100 rounded-4" style="transition: transform 0.2s;">
+                        <div class="card-body p-4 d-flex flex-column">
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="rounded-circle bg-dark text-white d-flex align-items-center justify-content-center me-3 fs-4 fw-bold" style="width: 50px; height: 50px;">
+                                    @group.Name.Substring(0, 1).ToUpper()
+                                </div>
+                                <div>
+                                    <h5 class="card-title fw-bold mb-0 text-truncate" style="max-width: 200px;">@group.Name</h5>
+                                    <small class="text-muted">@group.Memberships.Count(m => m.IsAccepted) membri</small>
+                                </div>
+                            </div>
+
+                            <p class="card-text text-muted flex-grow-1 small" style="min-height: 40px;">
+                                @(string.IsNullOrEmpty(group.Description) ? "Fără descriere." : group.Description)
+                            </p>
+
+                            <div class="mt-3">
+                                @if (isMember)
+                                {
+                                    <a asp-action="Index" asp-route-groupId="@group.Id" class="btn btn-outline-secondary w-100 rounded-pill fw-bold">Deschide</a>
+                                }
+                                else if (isPending)
+                                {
+                                    <button class="btn btn-warning w-100 rounded-pill fw-bold text-white" disabled><i class="bi bi-hourglass-split"></i> În așteptare</button>
+                                }
+                                else
+                                {
+                                    <form asp-action="JoinGroup" method="post">
+                                        <input type="hidden" name="groupId" value="@group.Id" />
+                                        <button type="submit" class="btn btn-danger w-100 rounded-pill fw-bold">Cere să intri</button>
+                                    </form>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<div class="modal fade" id="createGroupModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">Creează Grup Nou</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body pt-3">
+                <form asp-action="CreateGroup" method="post">
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">Nume Grup</label>
+                        <input type="text" name="groupName" class="form-control rounded-3 bg-light border-0" placeholder="Ex: Discuții Generale" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">Descriere</label>
+                        <textarea name="description" class="form-control rounded-3 bg-light border-0" rows="3" placeholder="Despre ce este acest grup?"></textarea>
+                    </div>
+
+                    <div class="form-check form-switch mb-4 p-3 bg-light rounded-3 d-flex align-items-center justify-content-between">
+                        <div>
+                            <label class="form-check-label fw-bold" for="isPublicCheck">Grup Public</label>
+                            <div class="small text-muted" style="font-size: 0.75rem; line-height: 1.2;">
+                                Oricine poate găsi grupul în această listă.
+                            </div>
+                        </div>
+                        <input class="form-check-input" type="checkbox" id="isPublicCheck" name="isPublic" value="true" checked style="width: 2.5em; height: 1.25em; cursor: pointer;">
+                    </div>
+
+                    <button type="submit" class="btn btn-danger w-100 rounded-pill fw-bold py-2">Creează Grupul</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,5 +1,6 @@
 using System.Diagnostics;
-using Microsoft.AspNetCore.Identity; // Necesar pentru UserManager
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pinly.Models;
@@ -10,7 +11,7 @@ namespace Pinly.Controllers
     {
         private readonly ILogger<HomeController> _logger;
         private readonly AppDbContext _context;
-        private readonly UserManager<ApplicationUser> _userManager; // Injectam UserManager
+        private readonly UserManager<ApplicationUser> _userManager;
 
         public HomeController(ILogger<HomeController> logger, AppDbContext context, UserManager<ApplicationUser> userManager)
         {
@@ -24,7 +25,6 @@ namespace Pinly.Controllers
             var currentUserId = _userManager.GetUserId(User);
             var isAdmin = User.IsInRole("Admin");
 
-            // 1. Aflam pe cine urmareste utilizatorul curent (doar cereri acceptate)
             var followingIds = new List<string>();
             if (currentUserId != null)
             {
@@ -34,23 +34,39 @@ namespace Pinly.Controllers
                     .ToListAsync();
             }
 
-            // 2. Interogare Pins cu Filtrare
+            // Index arata: Conturi Publice + Proprii + Urmariti + Tot (daca esti Admin)
             var pins = await _context.Pins
                 .Include(p => p.ApplicationUser)
                 .Include(p => p.Reactions)
                 .Where(p =>
-                    // Cazul 1: Contul este Public
                     !p.ApplicationUser.IsPrivate ||
-
-                    // Cazul 2: Este propriul meu pin
                     p.ApplicationUser.Id == currentUserId ||
-
-                    // Cazul 3: Sunt Admin (vad tot)
                     isAdmin ||
-
-                    // Cazul 4: Il urmaresc pe autor (si mi-a acceptat cererea)
                     followingIds.Contains(p.ApplicationUserId)
                 )
+                .OrderByDescending(p => p.CreatedDate)
+                .ToListAsync();
+
+            return View(pins);
+        }
+
+        // --- PAGINA NOUA: DOAR CEI URMARITI ---
+        [Authorize]
+        public async Task<IActionResult> Following()
+        {
+            var userId = _userManager.GetUserId(User);
+
+            // 1. Luam lista celor pe care ii urmarim (si cererea e acceptata)
+            var followingIds = await _context.Follows
+                .Where(f => f.FollowerId == userId && f.IsAccepted)
+                .Select(f => f.FolloweeId)
+                .ToListAsync();
+
+            // 2. Luam pin-urile DOAR de la acesti useri
+            var pins = await _context.Pins
+                .Include(p => p.ApplicationUser)
+                .Include(p => p.Reactions)
+                .Where(p => followingIds.Contains(p.ApplicationUserId))
                 .OrderByDescending(p => p.CreatedDate)
                 .ToListAsync();
 

@@ -36,6 +36,7 @@ namespace Pinly.Controllers
                     senderPic = n.Sender.ProfilePicturePath,
                     senderId = n.SenderId,
                     pinId = n.PinId,
+                    groupId = n.GroupId, // --- Asta este linia importanta ---
                     isRead = n.IsRead,
                     date = n.CreatedDate.ToString("dd MMM HH:mm")
                 })
@@ -56,7 +57,6 @@ namespace Pinly.Controllers
             return Ok();
         }
 
-        // --- METODA NOUA: Marcheaza tot ca citit ---
         [HttpPost]
         public async Task<IActionResult> MarkAllRead()
         {

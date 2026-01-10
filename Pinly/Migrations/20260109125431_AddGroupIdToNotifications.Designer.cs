@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Pinly.Models;
 
@@ -11,9 +12,11 @@ using Pinly.Models;
 namespace Pinly.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260109125431_AddGroupIdToNotifications")]
+    partial class AddGroupIdToNotifications
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -326,9 +329,6 @@ namespace Pinly.Migrations
                     b.Property<bool>("IsPrivate")
                         .HasColumnType("bit");
 
-                    b.Property<bool>("IsPublic")
-                        .HasColumnType("bit");
-
                     b.Property<string>("ModeratorId")
                         .HasColumnType("nvarchar(450)");
 
@@ -352,12 +352,6 @@ namespace Pinly.Migrations
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<bool>("IsAccepted")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsBlocked")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsModerator")
                         .HasColumnType("bit");
 
                     b.Property<DateTime>("JoinedAt")
@@ -387,12 +381,6 @@ namespace Pinly.Migrations
 
                     b.Property<int>("GroupId")
                         .HasColumnType("int");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsEdited")
-                        .HasColumnType("bit");
 
                     b.Property<string>("SenderId")
                         .IsRequired()

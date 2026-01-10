@@ -33,6 +33,7 @@ namespace Pinly.Migrations
                     FullName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     Description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
                     ProfilePicturePath = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    IsPrivate = table.Column<bool>(type: "bit", nullable: false),
                     IsPublic = table.Column<bool>(type: "bit", nullable: false),
                     UserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     NormalizedUserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
@@ -165,7 +166,8 @@ namespace Pinly.Migrations
                 columns: table => new
                 {
                     FollowerId = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    FolloweeId = table.Column<string>(type: "nvarchar(450)", nullable: false)
+                    FolloweeId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    IsAccepted = table.Column<bool>(type: "bit", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -312,6 +314,42 @@ namespace Pinly.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Notifications",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Text = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Type = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    CreatedDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    IsRead = table.Column<bool>(type: "bit", nullable: false),
+                    SenderId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    RecipientId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    PinId = table.Column<int>(type: "int", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Notifications", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Notifications_AspNetUsers_RecipientId",
+                        column: x => x.RecipientId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Notifications_AspNetUsers_SenderId",
+                        column: x => x.SenderId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Notifications_Pins_PinId",
+                        column: x => x.PinId,
+                        principalTable: "Pins",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Reactions",
                 columns: table => new
                 {
@@ -334,6 +372,31 @@ namespace Pinly.Migrations
                         principalTable: "Pins",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "CommentLikes",
+                columns: table => new
+                {
+                    CommentId = table.Column<int>(type: "int", nullable: false),
+                    ApplicationUserId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    Id = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CommentLikes", x => new { x.CommentId, x.ApplicationUserId });
+                    table.ForeignKey(
+                        name: "FK_CommentLikes_AspNetUsers_ApplicationUserId",
+                        column: x => x.ApplicationUserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_CommentLikes_Comment_CommentId",
+                        column: x => x.CommentId,
+                        principalTable: "Comment",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateIndex(
@@ -386,6 +449,11 @@ namespace Pinly.Migrations
                 column: "PinId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_CommentLikes_ApplicationUserId",
+                table: "CommentLikes",
+                column: "ApplicationUserId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Follows_FolloweeId",
                 table: "Follows",
                 column: "FolloweeId");
@@ -409,6 +477,21 @@ namespace Pinly.Migrations
                 name: "IX_Groups_ModeratorId",
                 table: "Groups",
                 column: "ModeratorId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Notifications_PinId",
+                table: "Notifications",
+                column: "PinId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Notifications_RecipientId",
+                table: "Notifications",
+                column: "RecipientId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Notifications_SenderId",
+                table: "Notifications",
+                column: "SenderId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Pins_ApplicationUserId",
@@ -440,7 +523,7 @@ namespace Pinly.Migrations
                 name: "AspNetUserTokens");
 
             migrationBuilder.DropTable(
-                name: "Comment");
+                name: "CommentLikes");
 
             migrationBuilder.DropTable(
                 name: "Follows");
@@ -452,10 +535,16 @@ namespace Pinly.Migrations
                 name: "GroupMessages");
 
             migrationBuilder.DropTable(
+                name: "Notifications");
+
+            migrationBuilder.DropTable(
                 name: "Reactions");
 
             migrationBuilder.DropTable(
                 name: "AspNetRoles");
+
+            migrationBuilder.DropTable(
+                name: "Comment");
 
             migrationBuilder.DropTable(
                 name: "Groups");

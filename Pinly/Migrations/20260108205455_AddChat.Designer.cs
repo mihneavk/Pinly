@@ -12,8 +12,8 @@ using Pinly.Models;
 namespace Pinly.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260107103340_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20260108205455_AddChat")]
+    partial class AddChat
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -190,6 +190,9 @@ namespace Pinly.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<bool>("IsPrivate")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("IsPublic")
                         .HasColumnType("bit");
 
@@ -273,6 +276,24 @@ namespace Pinly.Migrations
                     b.ToTable("Comment", (string)null);
                 });
 
+            modelBuilder.Entity("Pinly.Models.CommentLike", b =>
+                {
+                    b.Property<int>("CommentId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ApplicationUserId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("Id")
+                        .HasColumnType("int");
+
+                    b.HasKey("CommentId", "ApplicationUserId");
+
+                    b.HasIndex("ApplicationUserId");
+
+                    b.ToTable("CommentLikes");
+                });
+
             modelBuilder.Entity("Pinly.Models.Follow", b =>
                 {
                     b.Property<string>("FollowerId")
@@ -280,6 +301,9 @@ namespace Pinly.Migrations
 
                     b.Property<string>("FolloweeId")
                         .HasColumnType("nvarchar(450)");
+
+                    b.Property<bool>("IsAccepted")
+                        .HasColumnType("bit");
 
                     b.HasKey("FollowerId", "FolloweeId");
 
@@ -300,11 +324,12 @@ namespace Pinly.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Description")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<bool>("IsPrivate")
+                        .HasColumnType("bit");
+
                     b.Property<string>("ModeratorId")
-                        .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("Name")
@@ -347,10 +372,6 @@ namespace Pinly.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("ApplicationUserId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
                     b.Property<string>("Content")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -361,13 +382,61 @@ namespace Pinly.Migrations
                     b.Property<int>("GroupId")
                         .HasColumnType("int");
 
-                    b.HasKey("Id");
+                    b.Property<string>("SenderId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
 
-                    b.HasIndex("ApplicationUserId");
+                    b.HasKey("Id");
 
                     b.HasIndex("GroupId");
 
+                    b.HasIndex("SenderId");
+
                     b.ToTable("GroupMessages");
+                });
+
+            modelBuilder.Entity("Pinly.Models.Notification", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("PinId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RecipientId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("SenderId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PinId");
+
+                    b.HasIndex("RecipientId");
+
+                    b.HasIndex("SenderId");
+
+                    b.ToTable("Notifications");
                 });
 
             modelBuilder.Entity("Pinly.Models.Pin", b =>
@@ -491,6 +560,25 @@ namespace Pinly.Migrations
                     b.Navigation("Pin");
                 });
 
+            modelBuilder.Entity("Pinly.Models.CommentLike", b =>
+                {
+                    b.HasOne("Pinly.Models.ApplicationUser", "ApplicationUser")
+                        .WithMany()
+                        .HasForeignKey("ApplicationUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Pinly.Models.Comment", "Comment")
+                        .WithMany("Likes")
+                        .HasForeignKey("CommentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ApplicationUser");
+
+                    b.Navigation("Comment");
+                });
+
             modelBuilder.Entity("Pinly.Models.Follow", b =>
                 {
                     b.HasOne("Pinly.Models.ApplicationUser", "Followee")
@@ -515,8 +603,7 @@ namespace Pinly.Migrations
                     b.HasOne("Pinly.Models.ApplicationUser", "Moderator")
                         .WithMany("ModeratedGroups")
                         .HasForeignKey("ModeratorId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Moderator");
                 });
@@ -542,21 +629,46 @@ namespace Pinly.Migrations
 
             modelBuilder.Entity("Pinly.Models.GroupMessage", b =>
                 {
-                    b.HasOne("Pinly.Models.ApplicationUser", "ApplicationUser")
-                        .WithMany("GroupMessages")
-                        .HasForeignKey("ApplicationUserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("Pinly.Models.Group", "Group")
                         .WithMany("Messages")
                         .HasForeignKey("GroupId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("ApplicationUser");
+                    b.HasOne("Pinly.Models.ApplicationUser", "Sender")
+                        .WithMany("GroupMessages")
+                        .HasForeignKey("SenderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.Navigation("Group");
+
+                    b.Navigation("Sender");
+                });
+
+            modelBuilder.Entity("Pinly.Models.Notification", b =>
+                {
+                    b.HasOne("Pinly.Models.Pin", "Pin")
+                        .WithMany()
+                        .HasForeignKey("PinId");
+
+                    b.HasOne("Pinly.Models.ApplicationUser", "Recipient")
+                        .WithMany()
+                        .HasForeignKey("RecipientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Pinly.Models.ApplicationUser", "Sender")
+                        .WithMany()
+                        .HasForeignKey("SenderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Pin");
+
+                    b.Navigation("Recipient");
+
+                    b.Navigation("Sender");
                 });
 
             modelBuilder.Entity("Pinly.Models.Pin", b =>
@@ -606,6 +718,11 @@ namespace Pinly.Migrations
                     b.Navigation("Pins");
 
                     b.Navigation("Reactions");
+                });
+
+            modelBuilder.Entity("Pinly.Models.Comment", b =>
+                {
+                    b.Navigation("Likes");
                 });
 
             modelBuilder.Entity("Pinly.Models.Group", b =>

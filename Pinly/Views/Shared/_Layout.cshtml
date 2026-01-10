@@ -20,76 +20,131 @@
     <header>
         <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
             <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">Pinly</a>
+                <a class="navbar-brand fw-bold text-danger fs-3 me-4" asp-area="" asp-controller="Home" asp-action="Index" style="letter-spacing: -1px;">
+                    <i class="bi bi-pinterest"></i> Pinly
+                </a>
+
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
+
+                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between align-items-center">
+
+                    <ul class="navbar-nav flex-grow-1 align-items-center">
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
+                            <a class="nav-link text-dark fw-bold px-3 rounded-pill hover-bg-light" asp-area="" asp-controller="Home" asp-action="Index">
+                                <i class="bi bi-compass me-1"></i> Explorează
+                            </a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-                        </li>
+
+                        @if (SignInManager.IsSignedIn(User))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark fw-bold px-3 rounded-pill hover-bg-light" asp-area="" asp-controller="Home" asp-action="Following">
+                                    <i class="bi bi-people-fill me-1"></i> Urmăriri
+                                </a>
+                            </li>
+                        }
+                        @if (SignInManager.IsSignedIn(User))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark fw-bold px-3 rounded-pill hover-bg-light" asp-controller="Chat" asp-action="PublicGroups">
+                                    <i class="bi bi-globe-europe-africa me-1"></i> Grupuri
+                                </a>
+                            </li>
+                        }
+
                     </ul>
 
-                    <div class="position-relative ms-auto me-3" style="min-width: 250px;">
-                        <input type="text" id="userSearchInput" class="form-control rounded-pill border-0 bg-light" placeholder="Cauta persoane..." autocomplete="off" style="padding-left: 20px;">
+                    <div class="position-relative mx-3 flex-grow-1" style="max-width: 500px;">
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-0 rounded-start-pill ps-3">
+                                <i class="bi bi-search text-muted"></i>
+                            </span>
+                            <input type="text" id="userSearchInput" class="form-control border-0 bg-light rounded-end-pill py-2" placeholder="Caută persoane..." autocomplete="off">
+                        </div>
                         <div id="searchResults" class="list-group position-absolute w-100 shadow-lg rounded-3 mt-1" style="display: none; z-index: 9999; overflow: hidden;"></div>
                     </div>
 
-                    <ul class="navbar-nav align-items-center">
+                    <ul class="navbar-nav align-items-center ms-auto">
                         @if (SignInManager.IsSignedIn(User))
                         {
+                            <li class="nav-item me-1">
+                                <a class="nav-link text-dark position-relative p-2 rounded-circle hover-bg-light" asp-controller="Chat" asp-action="Index" title="Mesaje">
+                                    <i class="bi bi-chat-dots-fill fs-5"></i>
+                                </a>
+                            </li>
+
                             <li class="nav-item dropdown me-2">
-                                <a class="nav-link text-dark position-relative" href="#" id="notifDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <a class="nav-link text-dark position-relative p-2 rounded-circle hover-bg-light" href="#" id="notifDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                     <i class="bi bi-bell-fill fs-5"></i>
                                     <span id="notifBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display:none; font-size: 0.6rem;">0</span>
                                 </a>
-                                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 rounded-3 p-0" aria-labelledby="notifDropdown" style="width: 320px; max-height: 400px; overflow-y: auto;" id="notifList">
-                                    <li class="text-center p-3 text-muted small">Se incarca...</li>
+                                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 rounded-4 p-0 mt-2" aria-labelledby="notifDropdown" style="width: 340px; max-height: 450px; overflow-y: auto;" id="notifList">
+                                    <li class="text-center p-4 text-muted small"><div class="spinner-border spinner-border-sm text-secondary" role="status"></div> Se încarcă...</li>
                                 </ul>
                             </li>
 
                             <li class="nav-item">
-                                <a class="nav-link text-dark fw-bold" asp-area="" asp-controller="Profiles" asp-action="Show" asp-route-id="@UserManager.GetUserId(User)" title="Vezi Profil">
-                                    <i class="bi bi-person-circle"></i> @UserManager.GetUserName(User)
+                                <a class="nav-link text-dark fw-bold px-3 rounded-pill hover-bg-light" asp-area="" asp-controller="Profiles" asp-action="Show" asp-route-id="@UserManager.GetUserId(User)" title="Vezi Profil">
+                                    @{
+                                        var user = await UserManager.GetUserAsync(User);
+                                        var pic = user?.ProfilePicturePath;
+                                    }
+                                    @if (!string.IsNullOrEmpty(pic))
+                                    {
+                                        <img src="@pic" class="rounded-circle border" style="width: 28px; height: 28px; object-fit: cover; margin-right: 5px; margin-top: -2px;">
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-person-circle fs-5 me-1" style="vertical-align: middle;"></i>
+                                    }
+                                    <span style="vertical-align: middle;">Profil</span>
                                 </a>
                             </li>
-                            <li class="nav-item">
+
+                            <li class="nav-item ms-1">
                                 <form class="form-inline" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })">
-                                    <button type="submit" class="nav-link btn btn-link text-dark" style="cursor:pointer; border:none; background:none;">Logout</button>
+                                    <button type="submit" class="nav-link btn btn-link text-secondary p-2 rounded-circle hover-bg-light" title="Deconectare">
+                                        <i class="bi bi-box-arrow-right fs-5"></i>
+                                    </button>
                                 </form>
                             </li>
                         }
                         else
                         {
-                            <li class="nav-item"><a class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Register">Register</a></li>
-                            <li class="nav-item"><a class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Login">Login</a></li>
+                            <li class="nav-item"><a class="btn btn-danger rounded-pill fw-bold px-3 me-2" asp-area="Identity" asp-page="/Account/Login">Logare</a></li>
+                            <li class="nav-item"><a class="btn btn-light rounded-pill fw-bold px-3 border" asp-area="Identity" asp-page="/Account/Register">Înregistrare</a></li>
                         }
                     </ul>
                 </div>
             </div>
         </nav>
     </header>
+
     <div class="container">
         <main role="main" class="pb-3">
             @RenderBody()
         </main>
     </div>
 
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2025 - Pinly - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+    <footer class="border-top footer text-muted mt-5 py-3 bg-light">
+        <div class="container text-center">
+            &copy; 2025 - Pinly - <a asp-area="" asp-controller="Home" asp-action="Privacy" class="text-decoration-none">Privacy</a>
         </div>
     </footer>
+
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 
     <style>
+        .hover-bg-light:hover {
+            background-color: #f0f0f0;
+            transition: 0.2s;
+        }
+
         #searchResults .list-group-item {
             border: none;
             border-bottom: 1px solid #f0f0f0;
@@ -112,6 +167,16 @@
 
         .notif-unread {
             background-color: #fff5f5;
+            border-left: 3px solid #E60023;
+        }
+
+        #notifList::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #notifList::-webkit-scrollbar-thumb {
+            background-color: #ccc;
+            border-radius: 4px;
         }
     </style>
 
@@ -160,16 +225,11 @@
             const notifBadge = document.getElementById('notifBadge');
 
             if(notifDropdown) {
-                loadNotifications(true); // Incarca badge-ul initial
+                loadNotifications(true);
 
                 notifDropdown.addEventListener('show.bs.dropdown', function () {
-                    // 1. Ascunde badge-ul imediat vizual
                     notifBadge.style.display = 'none';
-
-                    // 2. Marcheaza tot ca citit in spate
                     fetch('/Notifications/MarkAllRead', { method: 'POST' });
-
-                    // 3. Reincarca lista (cu parametrul false ca sa nu puna badge-ul la loc)
                     loadNotifications(false);
                 });
             }
@@ -180,20 +240,42 @@
                     .then(data => {
                         notifList.innerHTML = '';
                         let unreadCount = 0;
-                        if (data.length === 0) notifList.innerHTML = '<li class="text-center p-3 text-muted small">Nu ai notificări noi.</li>';
+                        if (data.length === 0) notifList.innerHTML = '<li class="text-center p-4 text-muted small"><i class="bi bi-bell-slash fs-4 d-block mb-2"></i>Nu ai notificări noi.</li>';
                         else {
                             data.forEach(n => {
                                 if (!n.isRead) unreadCount++;
                                 let bgClass = n.isRead ? '' : 'notif-unread';
-                                let avatar = n.senderPic ? `<img src="${n.senderPic}" class="rounded-circle me-2" style="width:36px;height:36px;object-fit:cover;">` : `<div class="rounded-circle me-2 d-flex align-items-center justify-content-center bg-secondary text-white fw-bold" style="width:36px;height:36px;">${n.senderName.charAt(0).toUpperCase()}</div>`;
-                                let content = `<div class="d-flex align-items-start w-100">${avatar}<div class="flex-grow-1"><div><span class="fw-bold">${n.senderName}</span> ${n.text}</div><div class="text-muted" style="font-size:0.75rem;">${n.date}</div>${getActionButtons(n)}</div></div>`;
+                                let avatar = n.senderPic ? `<img src="${n.senderPic}" class="rounded-circle me-2" style="width:40px;height:40px;object-fit:cover;">` : `<div class="rounded-circle me-2 d-flex align-items-center justify-content-center bg-secondary text-white fw-bold" style="width:40px;height:40px;">${n.senderName.charAt(0).toUpperCase()}</div>`;
+
+                                let textContent = `<span class="fw-bold text-dark">${n.senderName}</span> ${n.text}`;
+                                let dateContent = `<div class="text-muted mt-1" style="font-size:0.75rem;">${n.date}</div>`;
+
+                                let content = `
+                                    <div class="d-flex align-items-center w-100">
+                                        ${avatar}
+                                        <div class="flex-grow-1 ms-2" style="line-height: 1.2;">
+                                            <div style="font-size: 0.9rem;">${textContent}</div>
+                                            ${dateContent}
+                                            ${getActionButtons(n)}
+                                        </div>
+                                    </div>`;
+
                                 let li = document.createElement('li');
-                                li.className = `dropdown-item p-2 text-wrap notif-item ${bgClass}`;
+                                li.className = `dropdown-item p-3 text-wrap notif-item ${bgClass}`;
+
                                 if(n.type !== 'Request') {
                                     li.style.cursor = 'pointer';
                                     li.onclick = (e) => {
                                         if(e.target.tagName === 'BUTTON') return;
-                                        window.location.href = n.pinId ? `/Pins/Show/${n.pinId}` : `/Profiles/Show/${n.senderId}`;
+
+                                        // MODIFICARE: Redirectionare corecta pe baza groupId
+                                        if (n.groupId) {
+                                            window.location.href = `/Chat/Index?groupId=${n.groupId}`;
+                                        } else if (n.pinId) {
+                                            window.location.href = `/Pins/Show/${n.pinId}`;
+                                        } else {
+                                            window.location.href = `/Profiles/Show/${n.senderId}`;
+                                        }
                                     };
                                 }
                                 li.innerHTML = content;
@@ -201,7 +283,6 @@
                             });
                         }
 
-                        // Actualizeaza badge-ul DOAR daca updateBadge este true
                         if (updateBadge) {
                             if (unreadCount > 0) { notifBadge.innerText = unreadCount; notifBadge.style.display = 'block'; }
                             else { notifBadge.style.display = 'none'; }
@@ -211,7 +292,7 @@
 
             function getActionButtons(n) {
                 if (n.type === 'Request') {
-                    return `<div class="mt-2"><button onclick="respondRequest(${n.id}, true)" class="btn btn-sm btn-danger rounded-pill px-3 py-0 me-1" style="font-size:0.8rem;">Acceptă</button><button onclick="respondRequest(${n.id}, false)" class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-0" style="font-size:0.8rem;">Refuză</button></div>`;
+                    return `<div class="mt-2"><button onclick="respondRequest(${n.id}, true)" class="btn btn-sm btn-danger rounded-pill px-3 py-1 me-2 fw-bold" style="font-size:0.8rem;">Acceptă</button><button onclick="respondRequest(${n.id}, false)" class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1 fw-bold" style="font-size:0.8rem;">Refuză</button></div>`;
                 }
                 return '';
             }

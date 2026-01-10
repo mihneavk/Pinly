@@ -4,22 +4,21 @@ namespace Pinly.Models
 {
     public class Group
     {
-        [Key]
         public int Id { get; set; }
 
-        [Required(ErrorMessage = "Numele grupului este obligatoriu")]
+        [Required]
         public string Name { get; set; }
 
-        [Required(ErrorMessage = "Descrierea grupului este obligatorie")]
-        public string Description { get; set; }
+        public string? Description { get; set; } // Optional pt DM
 
-        public DateTime CreatedDate { get; set; }
+        public bool IsPrivate { get; set; } = false; // False=Grup, True=DM
+        public bool IsPublic { get; set; } = false; // true - grup public si false pt privat
 
-        // Relația 1:N: Cine a creat/modereaza grupul
-        public string ModeratorId { get; set; } // FK
+        public DateTime CreatedDate { get; set; } = DateTime.Now;
+
+        public string? ModeratorId { get; set; }
         public virtual ApplicationUser? Moderator { get; set; }
 
-        // Relații de Navigare
         public virtual ICollection<GroupMessage>? Messages { get; set; }
         public virtual ICollection<GroupMembership>? Memberships { get; set; }
     }
