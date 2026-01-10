@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pinly.Models;
+using Pinly.Services; // Asigura-te ca ai acest namespace pentru serviciul AI
 using Pinly.ViewModels;
 
 namespace Pinly.Controllers
@@ -12,13 +13,17 @@ namespace Pinly.Controllers
     {
         private readonly AppDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly AiCompanionService _ai; // Serviciul AI
 
-        public ChatController(AppDbContext context, UserManager<ApplicationUser> userManager)
+        // Injectam si serviciul AI in constructor
+        public ChatController(AppDbContext context, UserManager<ApplicationUser> userManager, AiCompanionService ai)
         {
             _context = context;
             _userManager = userManager;
+            _ai = ai;
         }
 
+        // --- PAGINA PRINCIPALA CHAT ---
         [HttpGet]
         public async Task<IActionResult> Index(int? groupId)
         {
@@ -74,15 +79,21 @@ namespace Pinly.Controllers
             return View(model);
         }
 
+        // --- LISTA GRUPURI PUBLICE ---
         [HttpGet]
         public async Task<IActionResult> PublicGroups()
         {
             var userId = _userManager.GetUserId(User);
-            var groups = await _context.Groups.Include(g => g.Memberships).Where(g => g.IsPublic).ToListAsync();
+            var groups = await _context.Groups
+                .Include(g => g.Memberships)
+                .Where(g => g.IsPublic)
+                .ToListAsync();
+
             ViewBag.UserId = userId;
             return View(groups);
         }
 
+        // --- CERERE JOIN GRUP PUBLIC ---
         [HttpPost]
         public async Task<IActionResult> JoinGroup(int groupId)
         {
@@ -92,19 +103,34 @@ namespace Pinly.Controllers
             if (group == null || !group.IsPublic) return NotFound();
             if (group.Memberships.Any(m => m.ApplicationUserId == userId)) return RedirectToAction("PublicGroups");
 
-            _context.GroupMemberships.Add(new GroupMembership { GroupId = groupId, ApplicationUserId = userId, IsAccepted = false });
+            _context.GroupMemberships.Add(new GroupMembership
+            {
+                GroupId = groupId,
+                ApplicationUserId = userId,
+                IsAccepted = false
+            });
 
+            // Notificam adminii
             var admins = group.Memberships.Where(m => m.IsModerator || m.ApplicationUserId == group.ModeratorId).ToList();
             foreach (var admin in admins)
             {
-                _context.Notifications.Add(new Notification { SenderId = userId, RecipientId = admin.ApplicationUserId, Type = "Group", GroupId = groupId, Text = $"cere sa intre in '{group.Name}'.", CreatedDate = DateTime.Now });
+                _context.Notifications.Add(new Notification
+                {
+                    SenderId = userId,
+                    RecipientId = admin.ApplicationUserId,
+                    Type = "Group",
+                    GroupId = groupId,
+                    Text = $"cere să intre în grupul '{group.Name}'.",
+                    CreatedDate = DateTime.Now
+                });
             }
 
             await _context.SaveChangesAsync();
-            TempData["Success"] = "Cerere trimisa.";
+            TempData["Success"] = "Cerere trimisă! Așteaptă aprobarea.";
             return RedirectToAction("PublicGroups");
         }
 
+        // --- ACCEPTARE MEMBRU ---
         [HttpPost]
         public async Task<IActionResult> AcceptJoin(int groupId, string userIdToAccept)
         {
@@ -119,12 +145,21 @@ namespace Pinly.Controllers
             if (target != null)
             {
                 target.IsAccepted = true;
-                _context.Notifications.Add(new Notification { SenderId = uid, RecipientId = userIdToAccept, Type = "Group", GroupId = groupId, Text = $"ti-a acceptat cererea in '{group.Name}'.", CreatedDate = DateTime.Now });
+                _context.Notifications.Add(new Notification
+                {
+                    SenderId = uid,
+                    RecipientId = userIdToAccept,
+                    Type = "Group",
+                    GroupId = groupId,
+                    Text = $"ți-a acceptat cererea în grupul '{group.Name}'.",
+                    CreatedDate = DateTime.Now
+                });
                 await _context.SaveChangesAsync();
             }
             return RedirectToAction("Index", new { groupId });
         }
 
+        // --- REFUZARE MEMBRU ---
         [HttpPost]
         public async Task<IActionResult> DeclineJoin(int groupId, string userIdToDecline)
         {
@@ -136,15 +171,28 @@ namespace Pinly.Controllers
             if (group.ModeratorId != uid && (me == null || !me.IsModerator)) return Forbid();
 
             var target = group.Memberships.FirstOrDefault(m => m.ApplicationUserId == userIdToDecline);
-            if (target != null) { _context.GroupMemberships.Remove(target); await _context.SaveChangesAsync(); }
+            if (target != null)
+            {
+                _context.GroupMemberships.Remove(target);
+                await _context.SaveChangesAsync();
+            }
             return RedirectToAction("Index", new { groupId });
         }
 
+        // --- TRIMITERE MESAJ (CU MODERARE AI) ---
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> SendMessage(int groupId, string content)
         {
             if (string.IsNullOrWhiteSpace(content)) return RedirectToAction("Index", new { groupId });
+
+            // 1. Verificare AI
+            if (!await _ai.IsSafe(content))
+            {
+                TempData["Error"] = "Conținutul tău conține termeni nepotriviți. Te rugăm să reformulezi.";
+                return RedirectToAction("Index", new { groupId });
+            }
+
             var userId = _userManager.GetUserId(User);
             var group = await _context.Groups.Include(g => g.Memberships).FirstOrDefaultAsync(g => g.Id == groupId);
             if (group == null) return NotFound();
@@ -152,7 +200,12 @@ namespace Pinly.Controllers
             var myMem = group.Memberships.FirstOrDefault(m => m.ApplicationUserId == userId);
             if (myMem == null || !myMem.IsAccepted) return Forbid();
 
-            if (group.IsPrivate && group.Memberships.Any(m => m.IsBlocked)) { TempData["Error"] = "Blocat."; return RedirectToAction("Index", new { groupId }); }
+            // 2. Verificare Block (DM)
+            if (group.IsPrivate && group.Memberships.Any(m => m.IsBlocked))
+            {
+                TempData["Error"] = "Conversație blocată.";
+                return RedirectToAction("Index", new { groupId });
+            }
 
             var msg = new GroupMessage { GroupId = groupId, SenderId = userId, Content = content, CreatedDate = DateTime.Now };
             _context.GroupMessages.Add(msg);
@@ -160,20 +213,37 @@ namespace Pinly.Controllers
             var others = group.Memberships.Where(m => m.ApplicationUserId != userId && m.IsAccepted).ToList();
             foreach (var mem in others)
             {
-                var txt = group.IsPrivate ? "mesaj nou." : $"mesaj in '{group.Name}'.";
+                var txt = group.IsPrivate ? "mesaj nou." : $"mesaj în '{group.Name}'.";
                 _context.Notifications.Add(new Notification { SenderId = userId, RecipientId = mem.ApplicationUserId, Type = "Message", GroupId = groupId, Text = txt, CreatedDate = DateTime.Now });
             }
             await _context.SaveChangesAsync();
             return RedirectToAction("Index", new { groupId });
         }
 
+        // --- CREARE GRUP (CU MODERARE AI) ---
         [HttpPost]
         public async Task<IActionResult> CreateGroup(string groupName, string description, bool isPublic)
         {
             if (string.IsNullOrWhiteSpace(groupName)) { TempData["Error"] = "Nume obligatoriu."; return RedirectToAction("Index"); }
+
+            // 1. Verificare AI pentru Nume/Descriere
+            if (!await _ai.IsSafe(groupName) || !await _ai.IsSafe(description))
+            {
+                TempData["Error"] = "Numele sau descrierea conțin termeni nepotriviți.";
+                return RedirectToAction("Index");
+            }
+
             var userId = _userManager.GetUserId(User);
 
-            var group = new Group { Name = groupName, Description = description, IsPrivate = false, IsPublic = isPublic, ModeratorId = userId, CreatedDate = DateTime.Now };
+            var group = new Group
+            {
+                Name = groupName,
+                Description = description,
+                IsPrivate = false,
+                IsPublic = isPublic,
+                ModeratorId = userId,
+                CreatedDate = DateTime.Now
+            };
             _context.Groups.Add(group);
             await _context.SaveChangesAsync();
 
@@ -183,6 +253,7 @@ namespace Pinly.Controllers
             return RedirectToAction("Index", new { groupId = group.Id });
         }
 
+        // --- ADAUGARE MEMBRU (INVITE) ---
         [HttpPost]
         public async Task<IActionResult> AddMember(int groupId, string username)
         {
@@ -202,21 +273,24 @@ namespace Pinly.Controllers
             bool isAdmin = group.ModeratorId == currentUserId;
             bool isMod = requester != null && requester.IsModerator;
 
-            if (!isAdmin && !isMod) { TempData["Error"] = "Fara permisiuni."; return RedirectToAction("Index", new { groupId }); }
+            if (!isAdmin && !isMod) { TempData["Error"] = "Nu ai permisiuni."; return RedirectToAction("Index", new { groupId }); }
 
             var userToAdd = await _userManager.FindByNameAsync(username);
-            if (userToAdd == null) { TempData["Error"] = "User negasit."; return RedirectToAction("Index", new { groupId }); }
+            if (userToAdd == null) { TempData["Error"] = "Utilizator negăsit."; return RedirectToAction("Index", new { groupId }); }
 
             if (!group.Memberships.Any(m => m.ApplicationUserId == userToAdd.Id))
             {
                 _context.GroupMemberships.Add(new GroupMembership { GroupId = groupId, ApplicationUserId = userToAdd.Id, IsAccepted = true });
-                _context.Notifications.Add(new Notification { SenderId = currentUserId, RecipientId = userToAdd.Id, Type = "Group", GroupId = groupId, Text = $"te-a adaugat in '{group.Name}'.", CreatedDate = DateTime.Now });
+                _context.Notifications.Add(new Notification { SenderId = currentUserId, RecipientId = userToAdd.Id, Type = "Group", GroupId = groupId, Text = $"te-a adăugat în '{group.Name}'.", CreatedDate = DateTime.Now });
                 await _context.SaveChangesAsync();
-                TempData["Success"] = "Adaugat.";
+                TempData["Success"] = "Membru adăugat.";
             }
+            else { TempData["Error"] = "Utilizatorul este deja în grup."; }
+
             return RedirectToAction("Index", new { groupId });
         }
 
+        // --- SCOATERE MEMBRU (KICK) ---
         [HttpPost]
         public async Task<IActionResult> RemoveMember(int groupId, string userIdToRemove)
         {
@@ -234,7 +308,7 @@ namespace Pinly.Controllers
             bool targetIsAdmin = group.ModeratorId == userIdToRemove;
             bool targetIsMod = target.IsModerator;
 
-            if (targetIsAdmin) { TempData["Error"] = "Nu poti sterge adminul."; return RedirectToAction("Index", new { groupId }); }
+            if (targetIsAdmin) { TempData["Error"] = "Nu poți șterge administratorul."; return RedirectToAction("Index", new { groupId }); }
 
             if (!iamAdmin)
             {
@@ -248,6 +322,7 @@ namespace Pinly.Controllers
             return RedirectToAction("Index", new { groupId });
         }
 
+        // --- PARASIRE GRUP ---
         [HttpPost]
         public async Task<IActionResult> LeaveGroup(int groupId)
         {
@@ -266,6 +341,7 @@ namespace Pinly.Controllers
             return RedirectToAction("Index");
         }
 
+        // --- BLOCK / UNBLOCK (DM) ---
         [HttpPost]
         public async Task<IActionResult> ToggleBlock(int groupId)
         {
@@ -274,6 +350,7 @@ namespace Pinly.Controllers
             return RedirectToAction("Index", new { groupId });
         }
 
+        // --- PROMOVARE / RETROGRADARE ---
         [HttpPost]
         public async Task<IActionResult> ToggleModerator(int groupId, string userIdToToggle)
         {
@@ -285,9 +362,18 @@ namespace Pinly.Controllers
             return RedirectToAction("Index", new { groupId });
         }
 
+        // --- EDITARE MESAJ (CU MODERARE AI) ---
         [HttpPost]
         public async Task<IActionResult> EditMessage(int messageId, string newContent)
         {
+            // 1. Verificare AI
+            if (!await _ai.IsSafe(newContent))
+            {
+                TempData["Error"] = "Limbaj nepotrivit.";
+                var m_fail = await _context.GroupMessages.FindAsync(messageId);
+                return RedirectToAction("Index", new { groupId = m_fail?.GroupId });
+            }
+
             var m = await _context.GroupMessages.FindAsync(messageId);
             if (m != null && m.SenderId == _userManager.GetUserId(User) && !string.IsNullOrWhiteSpace(newContent))
             {
@@ -329,21 +415,28 @@ namespace Pinly.Controllers
             return RedirectToAction("Index", new { groupId = newG.Id });
         }
 
+        // --- CAUTARE GLOBALA ---
         [HttpGet]
         public async Task<IActionResult> SearchUsers(string term, int? groupId)
         {
             var currentUserId = _userManager.GetUserId(User);
+
+            // 1. Luam Adminii pt excludere
             var admins = await _userManager.GetUsersInRoleAsync("Admin");
             var adminIds = admins.Select(a => a.Id).ToList();
 
             var query = _context.Users.AsQueryable();
+
+            // 2. Excludem userul curent
             query = query.Where(u => u.Id != currentUserId);
 
+            // 3. Excludem Adminii
             if (adminIds.Any())
             {
                 query = query.Where(u => !adminIds.Contains(u.Id));
             }
 
+            // 4. Daca suntem intr-un grup, excludem membrii existenti
             if (groupId.HasValue)
             {
                 var existingMemberIds = _context.GroupMemberships
@@ -353,6 +446,7 @@ namespace Pinly.Controllers
                 query = query.Where(u => !existingMemberIds.Contains(u.Id));
             }
 
+            // 5. Cautare dupa nume
             if (!string.IsNullOrWhiteSpace(term))
             {
                 query = query.Where(u => u.UserName.Contains(term));
