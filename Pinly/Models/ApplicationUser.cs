@@ -17,7 +17,6 @@ namespace Pinly.Models
         // Default e public
         public bool IsPrivate { get; set; } = false;
 
-        // Proprietate veche (poti sa o stergi daca nu o mai folosesti, sau o lasi)
         public bool IsPublic { get; set; } = true;
 
         public virtual ICollection<Pin>? Pins { get; set; }

@@ -1,9 +1,9 @@
-using Microsoft.AspNetCore.Authorization; // --- NOU: Necesar pentru atributul [Authorize]
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pinly.Data;
 using Pinly.Models;
-using System.Security.Claims; // Necesar pentru a citi ID-ul userului logat
+using System.Security.Claims; 
 
 namespace Pinly.Controllers
 {
@@ -24,8 +24,6 @@ namespace Pinly.Controllers
             if (!string.IsNullOrEmpty(searchTerm))
             {
                 string lowerSearchTerm = searchTerm.ToLower();
-                // Notă: .ToLower() direct în query poate să nu meargă pe toate SGBD-urile, 
-                // dar pe SQL Server e ok de obicei. 
                 users = users.Where(u => u.FullName.Contains(searchTerm) ||
                                          u.UserName.Contains(searchTerm));
             }

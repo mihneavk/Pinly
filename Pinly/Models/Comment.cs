@@ -22,7 +22,7 @@ namespace Pinly.Models
         public string ApplicationUserId { get; set; }
         public virtual ApplicationUser ApplicationUser { get; set; }
 
-        // LISTA DE LIKE-URI (NOU)
+        // LISTA DE LIKE-URI
         public virtual ICollection<CommentLike> Likes { get; set; }
     }
 }

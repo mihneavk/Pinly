@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pinly.Models;
-using Pinly.Services; // Asigura-te ca ai acest namespace pentru serviciul AI
+using Pinly.Services;
 using Pinly.ViewModels;
 
 namespace Pinly.Controllers
@@ -15,7 +15,6 @@ namespace Pinly.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly AiCompanionService _ai; // Serviciul AI
 
-        // Injectam si serviciul AI in constructor
         public ChatController(AppDbContext context, UserManager<ApplicationUser> userManager, AiCompanionService ai)
         {
             _context = context;

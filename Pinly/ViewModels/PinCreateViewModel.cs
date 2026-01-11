@@ -11,6 +11,6 @@ namespace Pinly.ViewModels
 
         [Required(ErrorMessage = "Te rog să încarci o imagine")]
         [Display(Name = "Imagine Pin")]
-        public IFormFile Image { get; set; } // Proprietate pentru upload fișier
+        public IFormFile Image { get; set; } 
     }
 }

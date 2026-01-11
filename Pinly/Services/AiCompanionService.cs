@@ -13,15 +13,12 @@ namespace Pinly.Services
 
         private const string AiUrl = "https://router.huggingface.co/hf-inference/models/unitary/toxic-bert";
 
-        // Injectam IConfiguration pentru a citi cheia sigura
         public AiCompanionService(HttpClient httpClient, IConfiguration configuration)
         {
             _httpClient = httpClient;
 
-            // Citim cheia din User Secrets sau appsettings.json
             _apiKey = configuration["HuggingFace:ApiKey"];
 
-            // Verificam daca exista cheia (pentru debugging)
             if (string.IsNullOrEmpty(_apiKey))
             {
                 Debug.WriteLine("⚠️ ATENTIE: Cheia HuggingFace nu a fost gasita in configurari!");
