@@ -56,3 +56,19 @@ Verifică `appsettings.json` pentru connection string. Apoi rulează în Package
 
 ```bash
 Update-Database
+```
+
+### 4. Setare cheie AI
+* Click dreapta pe proiect în Visual Studio -> Manage User Secrets.
+* Adaugă configurația:
+```
+  {
+  "HuggingFace": {
+    "ApiKey": "hf_TASTA_TA_AICI"
+  }
+}
+```
+
+### 5. Ruleaza
+```
+#### F5 sau dotnet run
