@@ -14,6 +14,14 @@
     bool isVideo = ext == ".mp4" || ext == ".webm" || ext == ".mov" || ext == ".ogg";
 }
 
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show container mt-3" role="alert">
+        @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
 <div class="container mt-4 mb-5">
 
     <a asp-controller="Home" asp-action="Index" class="btn btn-light rounded-circle shadow-sm position-fixed" style="top: 80px; left: 20px; z-index: 1000; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">

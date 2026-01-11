@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Pinly.Models;
+using Pinly.Services; // <--- Namespace necesar
 using Pinly.ViewModels;
 
 namespace Pinly.Controllers
@@ -13,14 +14,17 @@ namespace Pinly.Controllers
         private readonly AppDbContext _context;
         private readonly IWebHostEnvironment _webHostEnvironment;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly AiCompanionService _ai; // <--- Serviciul AI
 
         public PinsController(AppDbContext context,
                               IWebHostEnvironment webHostEnvironment,
-                              UserManager<ApplicationUser> userManager)
+                              UserManager<ApplicationUser> userManager,
+                              AiCompanionService ai) // <--- Injectare in constructor
         {
             _context = context;
             _webHostEnvironment = webHostEnvironment;
             _userManager = userManager;
+            _ai = ai;
         }
 
         [HttpGet]
@@ -29,15 +33,21 @@ namespace Pinly.Controllers
             return View();
         }
 
-        // crestere limita
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [RequestSizeLimit(524288000)] // 500 MB in bytes
+        [RequestSizeLimit(524288000)]
         [RequestFormLimits(MultipartBodyLengthLimit = 524288000)]
         public async Task<IActionResult> Create(PinCreateViewModel model)
         {
             if (ModelState.IsValid)
             {
+                // --- VERIFICARE AI (Titlu si Descriere) ---
+                if (!await _ai.IsSafe(model.Title) || !await _ai.IsSafe(model.Description))
+                {
+                    ModelState.AddModelError(string.Empty, "Titlul sau descrierea contin termeni nepotriviti.");
+                    return View(model);
+                }
+
                 string uniqueFileName = null;
                 if (model.Image != null)
                 {
@@ -46,7 +56,6 @@ namespace Pinly.Controllers
                     uniqueFileName = Guid.NewGuid().ToString() + "_" + model.Image.FileName;
                     string filePath = Path.Combine(uploadsFolder, uniqueFileName);
 
-                    // Folosim stream pentru a salva fisierul
                     using (var fileStream = new FileStream(filePath, FileMode.Create))
                     {
                         await model.Image.CopyToAsync(fileStream);
@@ -76,10 +85,8 @@ namespace Pinly.Controllers
             var pin = await _context.Pins
                 .Include(p => p.ApplicationUser)
                 .Include(p => p.Reactions)
-                .Include(p => p.Comments)
-                    .ThenInclude(c => c.ApplicationUser)
-                .Include(p => p.Comments)
-                    .ThenInclude(c => c.Likes)
+                .Include(p => p.Comments).ThenInclude(c => c.ApplicationUser)
+                .Include(p => p.Comments).ThenInclude(c => c.Likes)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
             if (pin == null) return NotFound();
@@ -92,6 +99,14 @@ namespace Pinly.Controllers
         public async Task<IActionResult> AddComment(int pinId, string content)
         {
             if (string.IsNullOrWhiteSpace(content)) return RedirectToAction("Show", new { id = pinId });
+
+            // --- VERIFICARE AI (Comentariu) ---
+            if (!await _ai.IsSafe(content))
+            {
+                TempData["Error"] = "Comentariul tau contine limbaj nepotrivit.";
+                return RedirectToAction("Show", new { id = pinId });
+            }
+
             var user = await _userManager.GetUserAsync(User);
             var comment = new Comment
             {
@@ -102,7 +117,6 @@ namespace Pinly.Controllers
             };
             _context.Comments.Add(comment);
 
-            // Notificare Comentariu
             var pin = await _context.Pins.FindAsync(pinId);
             if (pin != null && pin.ApplicationUserId != user.Id)
             {
@@ -167,8 +181,16 @@ namespace Pinly.Controllers
             if (comment == null) return NotFound();
             var user = await _userManager.GetUserAsync(User);
             if (comment.ApplicationUserId != user.Id) return Forbid();
+
             if (!string.IsNullOrWhiteSpace(newContent))
             {
+                // --- VERIFICARE AI (Editare Comentariu) ---
+                if (!await _ai.IsSafe(newContent))
+                {
+                    TempData["Error"] = "Comentariul modificat contine limbaj nepotrivit.";
+                    return RedirectToAction("Show", new { id = comment.PinId });
+                }
+
                 comment.Content = newContent;
                 await _context.SaveChangesAsync();
             }
