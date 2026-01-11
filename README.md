@@ -71,4 +71,4 @@ Update-Database
 
 ### 5. Ruleaza
 ```
-#### F5 sau dotnet run
+F5 sau dotnet run
